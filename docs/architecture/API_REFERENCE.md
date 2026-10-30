@@ -29,5 +29,13 @@ Status codes: 401 not signed in / session revoked, 403 signed in but lacking the
 | POST `/invitations`, GET `/invitations`, POST `/invitations/{membership_id}/resend`, DELETE `/invitations/{membership_id}` | admin.manage_users | Invite by email (optional `role_id`, default employee), list pending, resend (older links stop working), revoke |
 | GET `/registration-requests?status=`, POST `/registration-requests/{id}/approve` or `/reject` | admin.manage_users | Review self-registration; approve sends an invitation |
 | GET/PATCH `/tenant/settings` | admin.manage_organization | Organization slug (read) and `self_registration_enabled` (default off) |
+| GET `/auth/sso/providers` | none | Configured providers and their public client ids |
+| POST `/auth/sso/{google\|microsoft}` | none (ID token) | Body: `id_token`, optional `nonce`, `tenant_id`, `invite_token`. Existing accounts only. 401 `Sign-in failed` for every rejection; 404 if the provider is not configured; 409 `tenant_required` |
+| GET `/auth/mfa` | signed in | Is two-step verification on |
+| POST `/auth/mfa/setup`, POST `/auth/mfa/enable` | signed in | Get a secret + `otpauth_uri`; confirm with a code, receive 8 one-time recovery codes (shown once) |
+| POST `/auth/mfa/disable` | signed in | Needs password and a code or recovery code |
+| POST `/employees/{membership_id}/mfa/reset` | admin.manage_users | Lost-device recovery; audited as privileged |
+
+Login with MFA on: `POST /auth/login` answers `401 {"detail":{"code":"mfa_required"}}` after a correct password; resend with `mfa_code` (authenticator or recovery code). Wrong codes count toward lockout.
 
 Planned groups follow the PRD section 17 list as each sprint ships.

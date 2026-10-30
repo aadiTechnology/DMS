@@ -77,7 +77,7 @@ def _issue_token(
     return raw
 
 
-def _find_token(db: Session, raw: str, purpose: str) -> AuthToken | None:
+def find_token(db: Session, raw: str, purpose: str) -> AuthToken | None:
     row = db.scalars(select(AuthToken).where(AuthToken.token_hash == hash_token(raw))).first()
     if row is None or row.purpose != purpose or row.used_at is not None or row.expires_at <= _now():
         return None
@@ -261,20 +261,12 @@ def set_self_registration(db: Session, tenant_id, actor_id, enabled: bool) -> Te
 # ---- public side (authentication context) -----------------------------------------------
 
 
-def accept_invitation(
-    db: Session, settings: Settings, token: str, password: str | None
-) -> TokenPair | None:
-    """None means the link is invalid, expired, used or revoked (one generic answer)."""
-    row = _find_token(db, token, "invite")
-    if row is None:
-        return None
-    user = db.get(User, row.user_id)
-    if user is None or user.status != "active":
-        return None
+def activate_invitation(db: Session, row: AuthToken, user: User) -> bool:
+    """Turn an invited membership active (authentication context). False if no longer pending."""
     with acting_as(db, APP_ROLE, row.tenant_id):
         membership = db.get(TenantMembership, row.membership_id)
         if membership is None or membership.status != "invited":
-            return None
+            return False
         membership.status = "active"
         audit.record(
             db,
@@ -284,6 +276,21 @@ def accept_invitation(
             resource_type="employee",
             resource_id=membership.id,
         )
+    return True
+
+
+def accept_invitation(
+    db: Session, settings: Settings, token: str, password: str | None
+) -> TokenPair | None:
+    """None means the link is invalid, expired, used or revoked (one generic answer)."""
+    row = find_token(db, token, "invite")
+    if row is None:
+        return None
+    user = db.get(User, row.user_id)
+    if user is None or user.status != "active":
+        return None
+    if not activate_invitation(db, row, user):
+        return None
     if user.password_hash is None:
         if not password:
             raise Invalid("A password is required to set up your account")
@@ -328,7 +335,7 @@ def request_password_reset(db: Session, settings: Settings, email: str) -> list[
 
 
 def reset_password(db: Session, token: str, password: str) -> bool:
-    row = _find_token(db, token, "password_reset")
+    row = find_token(db, token, "password_reset")
     if row is None:
         return False
     user = db.get(User, row.user_id)

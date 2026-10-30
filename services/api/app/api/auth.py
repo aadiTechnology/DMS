@@ -21,6 +21,7 @@ class LoginIn(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)
     tenant_id: uuid.UUID | None = None
+    mfa_code: str | None = Field(None, max_length=32)
 
 
 class RefreshIn(BaseModel):
@@ -53,7 +54,9 @@ def _tokens(result: auth_service.AuthResult) -> TokenOut:
 def login(body: LoginIn):
     # Commit happens when the session block exits, so failed-login counters persist.
     with auth_session() as db:
-        result = auth_service.login(db, get_settings(), body.email, body.password, body.tenant_id)
+        result = auth_service.login(
+            db, get_settings(), body.email, body.password, body.tenant_id, body.mfa_code
+        )
     if result.status == "tenant_required":
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -62,6 +65,8 @@ def login(body: LoginIn):
                 "tenants": [{"id": str(t["id"]), "name": t["name"]} for t in result.tenants],
             },
         )
+    if result.status == "mfa_required":
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail={"code": "mfa_required"})
     if result.status != "ok":
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail=INVALID)
     return _tokens(result)

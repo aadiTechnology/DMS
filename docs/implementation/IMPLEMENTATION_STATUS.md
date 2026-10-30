@@ -116,3 +116,16 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** SMTP delivery against a real server (only message construction tested); production database roles; CI on GitHub. Reminder: the dev `console` backend logs links, so use it only on a developer machine.
 
 **Next recommended:** Sprint 7: Google/Microsoft sign-in (OIDC verification built against recorded test tokens, account-linking default: link only when the provider reports a verified email matching an existing active account) and optional TOTP MFA. Real provider app registrations will be needed from you before it can be used live.
+
+## Sprint 7: SSO and optional MFA (done)
+**Changed:** migration `0007` (`identity_links`, `mfa_recovery_codes`, MFA columns on `users`), `app/services/{sso,mfa}.py`, `app/api/{sso,mfa}.py`, login refactor (`finish_login`, MFA step), `activate_invitation` extracted for reuse. New deps: `pyjwt[crypto]`, `cryptography`.
+
+**Decisions (simple terms):** "Sign in with Google/Microsoft" only works for people who already have an account in the system; it never creates one. Authenticator-app codes are optional per person, can't be reused, and are locked out like wrong passwords. Microsoft sign-in only trusts the email when Microsoft confirms the company owns that email domain.
+
+**Requirements touched:** Google and Microsoft sign-in, optional MFA (PRD App.A #13, 15.1). Account-linking rule resolves open decision D12 (as recommended and unobjected).
+
+**Tests executed (observed, local Postgres 16):** `uv run pytest -q` 113 passed (25 new: RFC 6238 vectors, replay/window, recovery codes, lockout, admin reset, encryption, SSO rejection matrix, link rebinding, Microsoft rules, multi-tenant choice, SSO invitation); `ruff` clean.
+
+**Not verified:** live Google/Microsoft tokens and JWKS fetching (tests use locally generated RSA keys and patch the key lookup); behavior with real authenticator apps (RFC vectors only); CI on GitHub. **You must register OAuth apps** before SSO can be used live.
+
+**Next recommended:** Sprint 8, storage abstraction (StorageProvider interface, local dev adapter, object-key scheme from ADR-0001, config validation). Sprint 9 then adds the real Backblaze adapter and needs a DMS-specific private test bucket and key from you (only "configured / not configured" status needed, never the values).

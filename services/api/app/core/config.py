@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     EMAIL_SMTP_PORT: int = 587
     EMAIL_SMTP_USER: str = ""
     EMAIL_SMTP_PASSWORD: str = ""
+    # SSO: public OAuth client ids (not secrets). Empty disables that provider.
+    SSO_GOOGLE_CLIENT_ID: str = ""
+    SSO_MICROSOFT_CLIENT_ID: str = ""
+    # Encrypts TOTP secrets at rest. Falls back to a key derived from SECRET_KEY.
+    MFA_ENCRYPTION_KEY: str = ""
 
     @model_validator(mode="after")
     def _production_needs_real_secret(self):

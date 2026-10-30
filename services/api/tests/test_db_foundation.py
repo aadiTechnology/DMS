@@ -22,6 +22,8 @@ TABLES = {
     "project_memberships",
     "auth_tokens",
     "registration_requests",
+    "identity_links",
+    "mfa_recovery_codes",
 }
 
 

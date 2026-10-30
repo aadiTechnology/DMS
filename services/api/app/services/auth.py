@@ -17,7 +17,7 @@ from app.core.security import (
     verify_password,
 )
 from app.db.models import Tenant, TenantMembership, User, UserSession
-from app.services import audit
+from app.services import audit, mfa
 
 
 @dataclass
@@ -67,23 +67,10 @@ def _active_memberships(db: Session, user_id: uuid.UUID) -> list[tuple[uuid.UUID
     return [(r.id, r.name) for r in rows]
 
 
-def login(
-    db: Session, settings: Settings, email: str, password: str, tenant_id: uuid.UUID | None
+def finish_login(
+    db: Session, settings: Settings, user: User, tenant_id: uuid.UUID | None, via: str = "password"
 ) -> AuthResult:
-    now = _now()
-    user = db.scalars(select(User).where(func.lower(User.email) == email.strip().lower())).first()
-    locked = bool(user and user.locked_until and user.locked_until > now)
-    # Always verify (dummy hash when absent) so timing does not reveal account existence.
-    valid = verify_password(user.password_hash if user else None, password)
-    if user is None or locked or user.status != "active":
-        return AuthResult("invalid")
-    if not valid:
-        user.failed_login_count += 1
-        if user.failed_login_count >= settings.LOGIN_MAX_FAILURES:
-            user.locked_until = now + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
-            user.failed_login_count = 0
-        return AuthResult("invalid")
-
+    """Pick the tenant for a user who has just proven their identity and open the session."""
     tenants = _active_memberships(db, user.id)
     if not tenants:
         return AuthResult("invalid")
@@ -97,12 +84,51 @@ def login(
 
     user.failed_login_count = 0
     user.locked_until = None
-    user.last_login_at = now
+    user.last_login_at = _now()
     tokens = issue_session(db, settings, user.id, tenant_id)
     audit.record(
-        db, tenant_id=tenant_id, actor_user_id=user.id, action="auth.login", resource_type="session"
+        db,
+        tenant_id=tenant_id,
+        actor_user_id=user.id,
+        action="auth.login",
+        resource_type="session",
+        details={"via": via},
     )
     return AuthResult("ok", tokens=tokens)
+
+
+def _register_failure(user: User, settings: Settings, now: datetime) -> None:
+    user.failed_login_count += 1
+    if user.failed_login_count >= settings.LOGIN_MAX_FAILURES:
+        user.locked_until = now + timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+        user.failed_login_count = 0
+
+
+def login(
+    db: Session,
+    settings: Settings,
+    email: str,
+    password: str,
+    tenant_id: uuid.UUID | None,
+    mfa_code: str | None = None,
+) -> AuthResult:
+    now = _now()
+    user = db.scalars(select(User).where(func.lower(User.email) == email.strip().lower())).first()
+    locked = bool(user and user.locked_until and user.locked_until > now)
+    # Always verify (dummy hash when absent) so timing does not reveal account existence.
+    valid = verify_password(user.password_hash if user else None, password)
+    if user is None or locked or user.status != "active":
+        return AuthResult("invalid")
+    if not valid:
+        _register_failure(user, settings, now)
+        return AuthResult("invalid")
+    if user.mfa_enabled:
+        if not mfa_code:
+            return AuthResult("mfa_required")  # password was right; ask for the second factor
+        if not mfa.verify_second_factor(db, settings, user, mfa_code):
+            _register_failure(user, settings, now)  # guessing codes counts toward lockout
+            return AuthResult("invalid")
+    return finish_login(db, settings, user, tenant_id)
 
 
 def refresh(db: Session, settings: Settings, refresh_token: str) -> AuthResult:
