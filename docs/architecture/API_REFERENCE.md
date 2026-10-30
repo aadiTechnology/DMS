@@ -74,6 +74,11 @@ Category policy fields: `approval_required`, `required_dimensions` (department, 
 | POST `/approvals/{id}/comments` | anyone who can view the review | Body `comment`; 201 |
 | POST `/documents/{id}/resubmit` | document.upload + owner/uploader | After a rejection; 201 with the new request; 409 if nothing was rejected |
 
+| POST `/documents/{id}/shares` | document.share + owner/uploader/privileged admin | Body `grantee_membership_id`, `can_view` (default true), `can_download`, optional `expires_at`. 201 new, 200 updated; 409 if not released; 422 if the recipient's role does not allow it |
+| DELETE `/documents/{id}/shares/{membership_id}` | same | Revokes; 404 if no active share |
+| GET `/documents/{id}/shares` | same | Active shares (`history=true` adds expired and revoked) |
+| GET `/shares/with-me`, GET `/shares/by-me` | signed in | Active shares to you (only for documents you can still see) or made by you, with title and classification |
+
 Categories accept `policy.approval_steps` (list of `{type: user|role|department_manager, ref}`), only together with `approval_required`.
 
 Login with MFA on: `POST /auth/login` answers `401 {"detail":{"code":"mfa_required"}}` after a correct password; resend with `mfa_code` (authenticator or recovery code). Wrong codes count toward lockout.

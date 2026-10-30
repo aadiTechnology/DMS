@@ -27,4 +27,4 @@ PostgreSQL 16, Alembic migrations in `services/api/migrations` (0001-0008 so far
 `pending` (reserved) -> `receiving` -> `available` | `quarantined` (virus) | `rejected` (failed validation); unfinished reservations become `abandoned`. Only `available` versions are usable. Separately, `review_status` (`none`, `pending`, `approved`, `rejected`) gates publication: only `none`/`approved` versions are served to general readers; `restored_from_version` records restore lineage. Version rows keep the object key and Backblaze file id so substitution can be detected.
 
 ## Planned
-Sharing grants API; retention and legal hold; notifications; storage-usage ledger; search index state.
+Retention and legal hold; notifications; storage-usage ledger; search index state.

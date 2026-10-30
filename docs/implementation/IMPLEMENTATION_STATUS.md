@@ -265,3 +265,16 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** notifications (not built); behaviour with very many reviewers; CI on GitHub.
 
 **Next recommended:** Sprint 16, sharing: create/revoke grants, "shared with me / by me", expiry.
+
+## Sprint 16: Sharing (done)
+**Changed:** `app/services/sharing.py`, `app/api/shares.py`, router registration. No migration: the grant table from Sprint 10 already holds everything.
+
+**Decision (simple terms):** the owner (or uploader) can share a released document with a colleague for viewing, or viewing and downloading, optionally until a date, and can stop sharing at any time; it takes effect at once for all versions. Sharing never gives more than the colleague's role allows, recipients cannot pass it on, and every change is recorded. Each person has "shared with me" and "shared by me" lists.
+
+**Requirements touched:** PRD 9.3 SHR-001..SHR-006 (direct share, separate view/download, expiry, revoke, audit, role ceiling). Not complete: sharing with groups/departments or external people (outside MVP), share notifications (notifications sprint), share-link by email.
+
+**Decisions to note:** only released documents can be shared; names in lists come from employee profiles (the application database role cannot read login accounts).
+
+**Bugs found by tests and fixed:** a join that reused the grant table broke the visibility sub-queries (aliased); listing tried to read login accounts (denied by design).
+
+**Tests executed (observed):** 8 new sharing tests; full suite `uv run pytest -q`: 332 passed, 2 skipped (live B2); `ruff` clean.

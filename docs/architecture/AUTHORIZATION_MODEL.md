@@ -117,5 +117,12 @@ Evaluation order:
 - **Privacy:** a review (comments, reasons, reviewers) is visible to the submitter, owner, assigned reviewers and privileged administrators only. Refusals are answered "not found" (403 when the role lacks the permission) and audited as `approval.access_denied`.
 - **Notification hooks:** every step start and decision is an `approval_events` row and an `approval.*` audit event; the notification sprint will read these.
 
-## 11. Planned
+## 11. Sharing (Sprint 16, implemented and tested)
+
+- **Who may share:** a person with `document.share` who may also modify the document (owner, uploader except for Highly Confidential, or the audited administrator privilege, flagged on the event). Someone a document was shared with cannot re-share it. Others get "not found" (403 without the permission).
+- **What can be shared:** released documents only (409 otherwise). The recipient must be an active colleague whose role already allows the right (view needs `document.view_metadata`, download needs `document.download`); the access policy still applies the role ceiling on every read (SHR-006).
+- **Rights:** view (metadata and preview) and download are separate; download implies view. Optional expiry (future, with time zone). Sharing again with the same person updates the share.
+- **Revoking** is immediate for every version and keeps the row as history; expired shares stop working without any job. Everything is audited (`share.created|updated|revoked`; notification hook).
+
+## 12. Planned
 RBAC roles/permissions, document-level policy (classification, ownership, grants, workflow state, legal hold), admin-privilege audit: Sprint 5 onward.
