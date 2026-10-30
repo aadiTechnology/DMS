@@ -28,6 +28,10 @@ TABLES = {
     "category_versions",
     "metadata_field_definitions",
     "tags",
+    "documents",
+    "document_associations",
+    "document_tags",
+    "document_versions",
 }
 
 

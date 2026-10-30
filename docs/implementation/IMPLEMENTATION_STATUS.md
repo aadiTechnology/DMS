@@ -180,3 +180,24 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** performance with very large category trees (the tree is assembled in memory per request; fine for thousands of nodes, to be measured in hardening); CI on GitHub.
 
 **Next recommended:** Sprint 11, document model and upload pipeline: pending upload records, streamed upload to disk with SHA-1/SHA-256, size/extension/MIME/signature checks, malware-scan hook (scanner choice D7 open: I will build the interface and a quarantine state, with a development scanner), metadata/dimension/classification validation against the category version, then `put_file`. Storage metering ledger follows.
+
+## Sprint 11: Document model and upload pipeline (done)
+**Changed:** migration `0009` (`documents`, `document_versions`, `document_associations`, `document_tags`; RLS; no DELETE grants), `app/services/{filetypes,scanner,uploads}.py`, `app/api/documents.py`, `check_permission` helper, settings (`UPLOAD_*`, `SCANNER_BACKEND`, `CLAMD_*`; production now requires `clamav`), API reference, database design.
+
+**How an upload works (simple terms):** (1) the person describes the file (category, name, type, size, extra fields, department/project, tags); the server checks all the category's rules *before* any bytes move and reserves the upload; (2) the person sends the bytes; the server saves them to a temporary file, fingerprints them (SHA-1 and SHA-256), checks that the real contents match the file type (a renamed program is refused), scans for viruses, and only then stores the file in the private bucket. An infected or fake file is never stored. Until all of that succeeds the document is unavailable; afterwards it is "approved" or, if the category needs it, "submitted" for review.
+
+**Safety properties (all tested):** extension allow-list (no executables, scripts, HTML, archives); declared type must agree; real file signature checked, Office files checked inside the zip with archive-bomb limits; size must equal the declared size; no database transaction is held while bytes stream; retries are safe (idempotency key at reservation, repeat completion returns the same result); an interrupted or temporarily failed upload (client dropped, storage error, scanner down) keeps the reservation for retry, and nothing is published; reservations expire after 60 minutes and a cleanup job removes abandoned reservations and leftover objects; temp files are always removed; other people's uploads and other tenants' data answer 404.
+
+**Decisions:**
+- ClamAV (free, open source) is the production scanner, reached through its standard socket protocol; production refuses to start with the development stand-in. This resolves D7 by the standing policy (no paid service). The ClamAV daemon must be deployed as a companion service; the protocol client is tested against a fake daemon, **not** a real ClamAV.
+- Uploaders may raise but not lower a category's default security level.
+- A category's associations accept several departments/projects per dimension (the PRD left this open); "required" means at least one.
+- New versions of an existing document are the next sprint; the data model already supports them.
+
+**Requirements touched:** STO-003, STO-004, STO-005 (checksums recorded), STO-001 (limit enforced), ORG-004, CAT-003/ORG-003 enforcement, TAG assignment, WF-005 groundwork (pending documents visible only to uploader/owner), upload reliability goals. Not complete: metering/quota check (the billing ledger sprint), preview/download (next), search indexing, approval decisions, administrator access with privileged audit, wider visibility rules.
+
+**Tests executed (observed, local Postgres 16):** `uv run pytest -q` 252 passed, 2 skipped (live B2); `ruff` clean. New: 20 file-type/scanner tests (including clamd INSTREAM against a fake daemon and fail-closed on unreachable scanner), 19 upload tests (end-to-end, category rules, Unicode, idempotency, fake file, size mismatch, malware, scanner outage, storage failure, expiry job, authorization, isolation, spool).
+
+**Not verified:** a real ClamAV daemon; 100 MB uploads (time and memory); Backblaze (still uses the local adapter in tests); behavior behind a reverse proxy with body-size limits (set the proxy limit above 100 MB); CI on GitHub.
+
+**Next recommended:** Sprint 12, access policy engine plus document download and preview (permission-checked, short-lived links, access audit including privileged administrator access), since uploads are only visible to their uploader until then.

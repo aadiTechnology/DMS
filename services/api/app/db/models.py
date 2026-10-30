@@ -563,3 +563,130 @@ class Tag(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
     )
     created_at: Mapped[datetime] = created_at_col()
+
+
+LIFECYCLE_STATES = "('draft','submitted','under_review','approved','rejected','archived')"
+VERSION_STATUSES = "('pending','receiving','available','quarantined','rejected','abandoned')"
+
+
+class Document(Base):
+    """Stable logical document (PRD 8.3). Bytes live in immutable `document_versions`."""
+
+    __tablename__ = "documents"
+    __table_args__ = (
+        CheckConstraint(f"classification IN {_CLASSIFICATIONS}", name="classification"),
+        CheckConstraint(f"lifecycle_state IN {LIFECYCLE_STATES}", name="lifecycle_state"),
+        Index("ix_documents_tenant_id_category_id", "tenant_id", "category_id"),
+        Index("ix_documents_tenant_id_created_by_user_id", "tenant_id", "created_by_user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    category_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False
+    )
+    category_version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    classification: Mapped[str] = mapped_column(String(30), nullable=False)
+    lifecycle_state: Mapped[str] = mapped_column(String(20), nullable=False, server_default="draft")
+    owner_membership_id: Mapped[uuid.UUID] = _membership_fk(nullable=False)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    current_version_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    metadata_values: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    created_at: Mapped[datetime] = created_at_col()
+    updated_at: Mapped[datetime] = created_at_col()
+
+
+class DocumentAssociation(Base):
+    """One row per organizational association (ORG-004), independently queryable."""
+
+    __tablename__ = "document_associations"
+    __table_args__ = (
+        UniqueConstraint("document_id", "dimension", "ref_id"),
+        CheckConstraint(
+            "dimension IN ('department','branch','project','employee')", name="dimension"
+        ),
+        Index(
+            "ix_document_associations_tenant_id_dimension_ref_id",
+            "tenant_id",
+            "dimension",
+            "ref_id",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="RESTRICT"), nullable=False
+    )
+    dimension: Mapped[str] = mapped_column(String(20), nullable=False)
+    ref_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+
+
+class DocumentTag(Base):
+    __tablename__ = "document_tags"
+    __table_args__ = (UniqueConstraint("document_id", "tag_id"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="RESTRICT"), nullable=False
+    )
+    tag_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tags.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+class DocumentVersion(Base):
+    """One uploaded file. Becomes `available` only after validation, scan and storage succeed."""
+
+    __tablename__ = "document_versions"
+    __table_args__ = (
+        UniqueConstraint("document_id", "version_number"),
+        UniqueConstraint("object_key"),
+        CheckConstraint(f"status IN {VERSION_STATUSES}", name="status"),
+        CheckConstraint(
+            "scan_status IN ('pending','clean','infected','failed')", name="scan_status"
+        ),
+        Index(
+            "uq_document_versions_idempotency",
+            "tenant_id",
+            "uploaded_by_user_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="RESTRICT"), nullable=False
+    )
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
+    original_filename: Mapped[str] = mapped_column(String(300), nullable=False)
+    declared_content_type: Mapped[str] = mapped_column(String(150), nullable=False)
+    declared_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    sha1: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    object_key: Mapped[str] = mapped_column(String(1024), nullable=False)
+    storage_file_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    scan_status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
+    scan_detail: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    reject_reason: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    comment: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    idempotency_key: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = created_at_col()
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

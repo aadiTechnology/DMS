@@ -112,3 +112,22 @@ def require_any_permission(*codes: str):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
 
     return dependency
+
+
+def check_permission(principal: Principal, code: str) -> None:
+    """Permission check with its own short transaction, for endpoints that must not hold a
+    database transaction open (streamed uploads). Denials are audited like require_permission."""
+    with tenant_session(principal.tenant_id) as db:
+        if has_permission(db, principal.tenant_id, principal.user_id, code):
+            return
+    with tenant_session(principal.tenant_id) as denial_db:
+        audit.record(
+            denial_db,
+            tenant_id=principal.tenant_id,
+            actor_user_id=principal.user_id,
+            action="authz.denied",
+            resource_type="permission",
+            resource_id=code,
+            outcome="denied",
+        )
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")

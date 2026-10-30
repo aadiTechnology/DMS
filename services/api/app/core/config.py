@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     LOGIN_LOCKOUT_MINUTES: int = Field(default=15, ge=1, le=1440)
     AUTH_RATE_LIMIT_PER_MINUTE: int = Field(default=30, ge=1)
     CATEGORY_MAX_DEPTH: int = Field(default=8, ge=1, le=20)
+    # Uploads (PRD section 8.1)
+    UPLOAD_RESERVATION_MINUTES: int = Field(default=60, ge=5, le=1440)
+    UPLOAD_TMP_DIR: str = ""  # empty = the system temp folder
+    # Malware scanning. `dev` is a stand-in for development only; production needs ClamAV.
+    SCANNER_BACKEND: Literal["dev", "clamav"] = "dev"
+    CLAMD_HOST: str = "localhost"
+    CLAMD_PORT: int = Field(default=3310, ge=1, le=65535)
+    CLAMD_TIMEOUT_SECONDS: int = Field(default=120, ge=5, le=900)
     INVITE_TTL_HOURS: int = Field(default=168, ge=1, le=720)
     RESET_TTL_MINUTES: int = Field(default=60, ge=5, le=1440)
     # Email. `console` (development only) logs messages; `smtp` works with any provider.
@@ -59,6 +67,8 @@ class Settings(BaseSettings):
             raise ValueError("EMAIL_BACKEND must be 'smtp' in production")
         if self.ENVIRONMENT == "production" and self.STORAGE_PROVIDER != "backblaze":
             raise ValueError("STORAGE_PROVIDER must be 'backblaze' in production")
+        if self.ENVIRONMENT == "production" and self.SCANNER_BACKEND != "clamav":
+            raise ValueError("SCANNER_BACKEND must be 'clamav' in production")
         if self.STORAGE_PROVIDER == "backblaze":
             missing = [
                 name

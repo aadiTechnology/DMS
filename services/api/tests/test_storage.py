@@ -230,7 +230,12 @@ def test_health_and_download_of_missing_object(storage, http):
 
 # ---- configuration safety ---------------------------------------------------------------
 
-PROD = {"ENVIRONMENT": "production", "SECRET_KEY": "x" * 40, "EMAIL_BACKEND": "smtp"}
+PROD = {
+    "ENVIRONMENT": "production",
+    "SECRET_KEY": "x" * 40,
+    "EMAIL_BACKEND": "smtp",
+    "SCANNER_BACKEND": "clamav",
+}
 B2 = {
     "STORAGE_PROVIDER": "backblaze",
     "DMS_B2_KEY_ID": "id",

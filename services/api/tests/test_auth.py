@@ -251,6 +251,7 @@ def test_production_rejects_default_or_short_secret():
         ENVIRONMENT="production",
         SECRET_KEY="x" * 40,
         EMAIL_BACKEND="smtp",
+        SCANNER_BACKEND="clamav",
         STORAGE_PROVIDER="backblaze",
         DMS_B2_KEY_ID="id",
         DMS_B2_APP_KEY="key",

@@ -50,6 +50,10 @@ Status codes: 401 not signed in / session revoked, 403 signed in but lacking the
 
 Category policy fields: `approval_required`, `required_dimensions` (department, branch, project, employee), `allowed_extensions`, `retention_days`, `review_interval_days`, `expiry_action` (archive only), `reminder_days`. Metadata field rules per type are described at the top of `app/services/metadata.py`. Field errors answer `422 {"detail": {"fields": {"<key>": "<message>"}}}`.
 
+| POST `/documents/uploads` | document.upload | Step 1, reserve an upload. Body: `category_id`, `filename`, `content_type`, `size_bytes`, optional `title`, `classification` (not below the category default), `owner_membership_id`, `associations` (`department`/`branch`/`project`/`employee` lists), `tag_ids`, `metadata`, `comment`. Optional `Idempotency-Key` header. 201 new, 200 replay. 415 type, 413 size, 422 rules/metadata (`{"fields": {...}}`) |
+| PUT `/documents/uploads/{version_id}/content` | document.upload (uploader only) | Step 2, raw file bytes as the body with `Content-Length` equal to the declared size. 200 `available`; repeat is harmless. 422 `signature_mismatch`/`malware_detected`, 400 `size_mismatch`, 409 wrong state, 410 reservation expired, 502 storage error and 503 `scan_unavailable` (both retryable) |
+| GET `/documents/mine`, GET `/documents/{id}` | signed in (uploader or owner only for now) | Your documents with versions, status, scan result, associations, tags |
+
 Login with MFA on: `POST /auth/login` answers `401 {"detail":{"code":"mfa_required"}}` after a correct password; resend with `mfa_code` (authenticator or recovery code). Wrong codes count toward lockout.
 
 Planned groups follow the PRD section 17 list as each sprint ships.
