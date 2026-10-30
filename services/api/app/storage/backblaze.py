@@ -187,6 +187,19 @@ class BackblazeStorage:
                 while chunk := handle.read(chunk_size):
                     yield chunk
 
+    def _download_token(self, bucket, key: str, ttl_seconds: int, overrides: dict) -> str:
+        post = getattr(self._api.session.raw_api, "_post_json", None)
+        if post is None:  # the test simulator has no per-request overrides
+            return bucket.get_download_authorization(
+                file_name_prefix=key, valid_duration_in_seconds=ttl_seconds
+            )
+        info = self._api.account_info
+        response = post(
+            info.get_api_url(), "b2_get_download_authorization", info.get_account_auth_token(),
+            bucketId=bucket.id_, fileNamePrefix=key, validDurationInSeconds=ttl_seconds, **overrides,
+        )  # fmt: skip
+        return response["authorizationToken"]
+
     def create_download_url(
         self, key: str, *, ttl_seconds: int, filename: str, inline: bool = False
     ) -> str:
@@ -196,18 +209,16 @@ class BackblazeStorage:
         def run() -> str:
             bucket = self._connect()
             # Scoped to this exact key (object ids are unique, so no sibling shares the prefix).
-            token = bucket.get_download_authorization(
-                file_name_prefix=key, valid_duration_in_seconds=ttl_seconds
-            )
-            query = urlencode(
-                {
-                    "Authorization": token,
-                    "b2ContentDisposition": _disposition(
-                        filename, "inline" if inline else "attachment"
-                    ),
-                    "b2CacheControl": "private, no-store",
-                }
-            )
+            # Backblaze rejects response-header overrides (401 bad_auth_token) unless the token
+            # was issued with the same values, so they are part of the authorization request.
+            overrides = {
+                "b2ContentDisposition": _disposition(
+                    filename, "inline" if inline else "attachment"
+                ),
+                "b2CacheControl": "private, no-store",
+            }
+            token = self._download_token(bucket, key, ttl_seconds, overrides)
+            query = urlencode({"Authorization": token, **overrides})
             return f"{bucket.get_download_url(key)}?{query}"
 
         return self._guard("download link", run)

@@ -20,3 +20,9 @@ It checks: connection, bucket private, key capabilities sufficient and bucket-re
 
 ## What the live test cannot cover yet
 Performance and memory of 100 MB transfers, SDK retry and timeout behavior under failure, B2 lifecycle/versioning settings, key rotation, and storage-usage reconciliation. These need a staging environment and are tracked for the hardening sprint.
+
+## Running from the repository root (Windows)
+`run_b2_live_test.bat` prompts for the key ID, application key (hidden) and bucket name, runs the live test and prints PASS or FAIL; nothing is written to disk. `run_b2_diagnose.bat` prints only HTTP status codes for download-link variants.
+
+## First live run (observed)
+Connection, privacy, capability and key-restriction checks passed against a real private bucket, as did upload, stat, read and the no-overwrite check. The download link returned 401 `bad_auth_token`: Backblaze only accepts `b2ContentDisposition` / `b2CacheControl` on a link when the download token was issued with the same values (the simulator does not enforce this). Fixed by issuing the token through the raw `b2_get_download_authorization` call with those values; regression test added. **Re-run pending.**

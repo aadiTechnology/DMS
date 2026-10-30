@@ -298,3 +298,26 @@ def test_copy_makes_an_independent_verified_object(b2):
         b2.copy(key_for("missing.pdf", version=3), key_for("nowhere.pdf", version=4))
     b2.delete(src)
     assert b"".join(b2.read_stream(dst)) == b"restore me please"
+
+
+def test_download_token_is_issued_with_the_same_overrides_as_the_link(b2):
+    """Live Backblaze answers 401 bad_auth_token if the link carries header overrides the token
+    was not issued with; the simulator cannot show this, so check what is sent."""
+    calls = []
+
+    class Raw:
+        def _post_json(self, api_url, operation, token, **body):
+            calls.append((operation, body))
+            return {"authorizationToken": "tok"}
+
+    key = key_for()
+    put(b2, key, b"x")
+    b2._connect()
+    b2._api.session.raw_api = Raw()
+    url = b2.create_download_url(key, ttl_seconds=60, filename="a b.pdf", inline=True)
+    query = parse_qs(urlparse(url).query)
+    ((operation, body),) = calls
+    assert operation == "b2_get_download_authorization" and body["fileNamePrefix"] == key
+    for name in ("b2ContentDisposition", "b2CacheControl"):
+        assert body[name] == query[name][0]
+    assert query["Authorization"] == ["tok"] and body["validDurationInSeconds"] == 60
