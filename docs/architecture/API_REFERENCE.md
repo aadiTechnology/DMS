@@ -36,6 +36,20 @@ Status codes: 401 not signed in / session revoked, 403 signed in but lacking the
 | POST `/auth/mfa/disable` | signed in | Needs password and a code or recovery code |
 | POST `/employees/{membership_id}/mfa/reset` | admin.manage_users | Lost-device recovery; audited as privileged |
 
+| GET `/metadata/field-types` | signed in | The 14 supported metadata field types |
+| GET `/categories?status=` | signed in | Flat list with `path` ("HR > Employee Records") and `depth`, sorted by path |
+| POST `/categories` | admin.manage_taxonomy | Create with `name`, `parent_id`, `default_classification`, and optionally `policy` + `fields` (becomes version 1) |
+| GET `/categories/{id}?version=` | signed in | Category plus a version's policy and fields (default: current) |
+| PATCH `/categories/{id}` | admin.manage_taxonomy | Rename, move (`parent_id`, null = top level), default classification, `status`. No DELETE |
+| GET `/categories/{id}/versions` | signed in | All versions, newest first |
+| POST `/categories/{id}/versions` | admin.manage_taxonomy | Publish a new immutable version (`policy` + `fields`); documents keep the version they were created under |
+| GET `/tags?kind=&status=` | signed in | Standard, employee and system tags |
+| POST `/tags` | standard: admin.manage_taxonomy; employee: upload or edit-metadata right + org policy | 201 created, 200 if a tag with that name already exists (returned, no duplicate) |
+| PATCH `/tags/{id}` | admin.manage_taxonomy | Rename or switch on/off; system tags (Pending, Approved, Archived) cannot be changed |
+| GET/PUT `/tags/policy` | admin.manage_taxonomy | `allow_employee_tags` (default true) |
+
+Category policy fields: `approval_required`, `required_dimensions` (department, branch, project, employee), `allowed_extensions`, `retention_days`, `review_interval_days`, `expiry_action` (archive only), `reminder_days`. Metadata field rules per type are described at the top of `app/services/metadata.py`. Field errors answer `422 {"detail": {"fields": {"<key>": "<message>"}}}`.
+
 Login with MFA on: `POST /auth/login` answers `401 {"detail":{"code":"mfa_required"}}` after a correct password; resend with `mfa_code` (authenticator or recovery code). Wrong codes count toward lockout.
 
 Planned groups follow the PRD section 17 list as each sprint ships.

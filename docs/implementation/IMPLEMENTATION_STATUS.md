@@ -165,3 +165,18 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Needed from you to verify live:** a new private DMS test bucket plus a bucket-restricted key with the six capabilities in `docs/deployment/STORAGE_CONFIGURATION.md`, set through your own secret store; then run the command in `docs/testing/B2_INTEGRATION_TESTS.md` and tell me the PASS/FAIL text only. Also still pending: rotate the exposed ERP key.
 
 **Next recommended:** taxonomy (categories, metadata schemas, tags, classifications), then the upload pipeline on top of `put_file`.
+
+## Sprint 10: Taxonomy (done)
+**Changed:** migration `0008` (`categories`, `category_versions`, `metadata_field_definitions`, `tags`, tenant flag `allow_employee_tags`, system-tag backfill), `app/services/{metadata,taxonomy}.py`, `app/api/taxonomy.py`, `require_any_permission`, system tags seeded at tenant provisioning, shared TypeScript constants (`METADATA_FIELD_TYPES`, `REQUIRED_DIMENSIONS`), `CATEGORY_MAX_DEPTH` setting, `docs/architecture/DATABASE_DESIGN.md`, API reference.
+
+**Decision (simple terms):** an organization builds its own folder-like tree of categories. Each category carries rules (needs approval? which department/branch/project must be filled in? allowed file types, how long to keep, when to remind) and a list of extra fields to fill in (text, numbers, dates, choices, people, labels). Changing the rules or fields never alters old documents: it publishes a new numbered version, and old versions are locked in the database so they cannot be edited, even by mistake.
+
+**Requirements touched:** CAT-001, CAT-002, CAT-004, TAG-001, TAG-002, TAG-003, TAG-004 (permission-aware search later), and the configuration half of CAT-003/ORG-003 (enforcement happens at upload), WF-001 (approval flag), retention policy settings (PRD 8.4). Classifications: four fixed levels per PRD 7.1 with a per-category default. Not complete: enforcing rules at upload, metadata values on documents, applying tags to documents, approval stages and reviewers (workflow sprint), expiry jobs.
+
+**Tests executed (observed, local Postgres 16):** `uv run pytest -q` 210 passed, 2 skipped (live B2); `ruff` clean; `npm run build` and `npm test` pass. New: 24 metadata engine tests (all 14 types, rules, Unicode, defaults, required/draft handling), 20 taxonomy API tests (tree, depth/cycle/uniqueness, deactivation rules, policy validation, versions kept immutable at database level, permissions, tenant isolation, tags incl. policy and Unicode names).
+
+**Notes:** employee tag requests that match an existing tag return that tag (no near-duplicates); duplicate detection beyond exact name (TAG-005) is deferred (P1). `tags.created_by` is kept for audit.
+
+**Not verified:** performance with very large category trees (the tree is assembled in memory per request; fine for thousands of nodes, to be measured in hardening); CI on GitHub.
+
+**Next recommended:** Sprint 11, document model and upload pipeline: pending upload records, streamed upload to disk with SHA-1/SHA-256, size/extension/MIME/signature checks, malware-scan hook (scanner choice D7 open: I will build the interface and a quarantine state, with a development scanner), metadata/dimension/classification validation against the category version, then `put_file`. Storage metering ledger follows.

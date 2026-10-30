@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     LOGIN_MAX_FAILURES: int = Field(default=5, ge=3, le=20)
     LOGIN_LOCKOUT_MINUTES: int = Field(default=15, ge=1, le=1440)
     AUTH_RATE_LIMIT_PER_MINUTE: int = Field(default=30, ge=1)
+    CATEGORY_MAX_DEPTH: int = Field(default=8, ge=1, le=20)
     INVITE_TTL_HOURS: int = Field(default=168, ge=1, le=720)
     RESET_TTL_MINUTES: int = Field(default=60, ge=5, le=1440)
     # Email. `console` (development only) logs messages; `smtp` works with any provider.

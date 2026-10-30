@@ -89,3 +89,26 @@ def require_permission(code: str):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
 
     return dependency
+
+
+def require_any_permission(*codes: str):
+    """Like `require_permission`, satisfied by any one of `codes` (denials audited the same way)."""
+
+    def dependency(
+        principal: Principal = Depends(get_principal), db: Session = Depends(get_tenant_db)
+    ) -> Principal:
+        if any(has_permission(db, principal.tenant_id, principal.user_id, c) for c in codes):
+            return principal
+        with tenant_session(principal.tenant_id) as denial_db:
+            audit.record(
+                denial_db,
+                tenant_id=principal.tenant_id,
+                actor_user_id=principal.user_id,
+                action="authz.denied",
+                resource_type="permission",
+                resource_id="|".join(codes),
+                outcome="denied",
+            )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+
+    return dependency

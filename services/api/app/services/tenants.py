@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Tenant, TenantMembership, UserRoleAssignment
 from app.db.rls import TENANT_SETTING
-from app.services import audit, rbac
+from app.services import audit, rbac, taxonomy
 
 
 def slugify(name: str) -> str:
@@ -34,6 +34,7 @@ def provision_tenant(
     membership = TenantMembership(tenant_id=tenant_id, user_id=admin_user_id, status="active")
     db.add(membership)
     roles = rbac.seed_default_roles(db, tenant_id)
+    taxonomy.seed_system_tags(db, tenant_id)
     db.flush()
     db.add(
         UserRoleAssignment(

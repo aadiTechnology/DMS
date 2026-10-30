@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
-from app.api import audit, auth, dev_storage, mfa, onboarding, org, rbac, sso
+from app.api import audit, auth, dev_storage, mfa, onboarding, org, rbac, sso, taxonomy
 from app.core.config import get_settings
 from app.storage import dev_storage_enabled
 
@@ -14,6 +14,7 @@ app.include_router(org.router)
 app.include_router(onboarding.router)
 app.include_router(rbac.router)
 app.include_router(audit.router)
+app.include_router(taxonomy.router)
 if dev_storage_enabled(get_settings()):
     app.include_router(dev_storage.router)
 

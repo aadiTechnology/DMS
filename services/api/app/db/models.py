@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -16,7 +17,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, created_at_col, uuid_pk
@@ -41,6 +42,9 @@ class Tenant(Base):
     slug: Mapped[str | None] = mapped_column(String(63), nullable=True, unique=True)
     self_registration_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false"
+    )
+    allow_employee_tags: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="true"
     )
 
 
@@ -444,4 +448,118 @@ class MfaRecoveryCode(Base):
     )
     code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = created_at_col()
+
+
+_CLASSIFICATIONS = "('public','internal','confidential','highly_confidential')"
+_ZERO_UUID = "'00000000-0000-0000-0000-000000000000'::uuid"
+
+
+class Category(Base):
+    """Node of the configurable category tree (PRD 6.1). Deactivated, never deleted."""
+
+    __tablename__ = "categories"
+    __table_args__ = (
+        CheckConstraint(_ORG_STATUS, name="status"),
+        CheckConstraint(
+            f"default_classification IN {_CLASSIFICATIONS}", name="default_classification"
+        ),
+        Index(
+            "uq_categories_tenant_parent_name",
+            "tenant_id",
+            text(f"coalesce(parent_id, {_ZERO_UUID})"),
+            text("lower(name)"),
+            unique=True,
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("categories.id", ondelete="RESTRICT"), nullable=True
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
+    default_classification: Mapped[str] = mapped_column(
+        String(30), nullable=False, server_default="internal"
+    )
+    current_version_number: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class CategoryVersion(Base):
+    """Immutable snapshot of a category's policy (the app role can INSERT but never UPDATE).
+    Documents keep pointing at the version they were created under (CAT-004)."""
+
+    __tablename__ = "category_versions"
+    __table_args__ = (
+        UniqueConstraint("category_id", "version_number"),
+        CheckConstraint("expiry_action IN ('archive')", name="expiry_action"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    category_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False
+    )
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    approval_required: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    required_dimensions: Mapped[list[str]] = mapped_column(
+        ARRAY(String(20)), nullable=False, server_default=text("'{}'")
+    )
+    allowed_extensions: Mapped[list[str] | None] = mapped_column(ARRAY(String(10)), nullable=True)
+    retention_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    review_interval_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    expiry_action: Mapped[str] = mapped_column(String(20), nullable=False, server_default="archive")
+    reminder_days: Mapped[list[int]] = mapped_column(
+        ARRAY(Integer), nullable=False, server_default=text("'{}'")
+    )
+    created_at: Mapped[datetime] = created_at_col()
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+
+
+class MetadataFieldDefinition(Base):
+    __tablename__ = "metadata_field_definitions"
+    __table_args__ = (UniqueConstraint("category_version_id", "key"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    category_version_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("category_versions.id", ondelete="RESTRICT", name="fk_mfd_category_version"),
+        nullable=False,
+    )
+    key: Mapped[str] = mapped_column(String(40), nullable=False)
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    field_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    required: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    searchable: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    default_value: Mapped[Any] = mapped_column(JSONB, nullable=True)
+    validation: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+
+
+class Tag(Base):
+    """Discovery label, never a security control (PRD 6). Kinds: standard (admin), employee
+    (policy-controlled), system (lifecycle, immutable)."""
+
+    __tablename__ = "tags"
+    __table_args__ = (
+        CheckConstraint("kind IN ('standard','employee','system')", name="kind"),
+        CheckConstraint(_ORG_STATUS, name="status"),
+        Index("uq_tags_tenant_name", "tenant_id", text("lower(name)"), unique=True),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
     created_at: Mapped[datetime] = created_at_col()
