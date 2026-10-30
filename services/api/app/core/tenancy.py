@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.security import decode_access_token
 from app.db.tenant_session import auth_session, tenant_session
+from app.services import audit
 from app.services.auth import is_session_usable
+from app.services.rbac import has_permission
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -57,3 +59,27 @@ def get_principal(
 def get_tenant_db(principal: Principal = Depends(get_principal)) -> Iterator[Session]:
     with tenant_session(principal.tenant_id) as session:
         yield session
+
+
+def require_permission(code: str):
+    """Dependency factory: 403 unless the caller's roles grant `code`. Denials are audited in a
+    separate transaction (the request transaction is rolled back when the 403 is raised)."""
+
+    def dependency(
+        principal: Principal = Depends(get_principal), db: Session = Depends(get_tenant_db)
+    ) -> Principal:
+        if has_permission(db, principal.tenant_id, principal.user_id, code):
+            return principal
+        with tenant_session(principal.tenant_id) as denial_db:
+            audit.record(
+                denial_db,
+                tenant_id=principal.tenant_id,
+                actor_user_id=principal.user_id,
+                action="authz.denied",
+                resource_type="permission",
+                resource_id=code,
+                outcome="denied",
+            )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+
+    return dependency

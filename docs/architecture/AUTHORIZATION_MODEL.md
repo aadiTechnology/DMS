@@ -27,5 +27,16 @@ Three independent layers, so one mistake cannot expose another customer's data:
 - **Production guard:** the app refuses to start with `ENVIRONMENT=production` and a default or short `SECRET_KEY`.
 - **Not yet built (later sprints):** password reset and email verification, invitations and self-registration approval (Sprint 6), Google/Microsoft SSO and optional MFA (Sprint 6), audit events for login/logout (Sprint 5, PRD requires them), refresh-token cleanup job.
 
-## 3. Planned
+## 3. Roles, permissions and audit (Sprint 4, implemented and tested)
+
+- **Data-driven roles.** Tables `roles`, `role_permissions`, `user_role_assignments` (all tenant-isolated). Each new tenant is seeded with five system roles (`org_admin`, `department_manager`, `project_manager`, `reviewer`, `employee`) from templates in `app/core/permissions.py`; they are rows, not code, so they can be changed per tenant. Permission codes follow PRD 7.3 plus one addition, `admin.manage_organization` (organization structure management, not named in the PRD list). A test keeps the Python catalog identical to `packages/domain/src/permissions.ts`.
+- **Permission = action ceiling.** A role grants what a person may *attempt*. Which documents it applies to (classification, ownership, department/project scope, explicit shares, workflow state, legal hold) is added by resource-level policy in the document sprints. Department/project-scoped role assignments arrive with the organization tables.
+- **Evaluation.** `has_permission` is one indexed query over active membership, live assignments and active roles. Revoking a role or deactivating a membership takes effect on the next request. Endpoints declare `Depends(require_permission("..."))`; unauthenticated callers get 401, authenticated-but-unpermitted get 403.
+- **Guard rails.** Assignments are idempotent; ids from another tenant answer 404; the last active org admin cannot be removed (409); revoked assignments are kept as history.
+- **Audit.** `audit_events` is append-only (the app role has no UPDATE/DELETE) and tenant-isolated. Recorded now: tenant provisioning, role assigned/revoked, permission denied (403), login, logout, refresh-token reuse. Read via `GET /api/v1/audit-events` (needs `admin.view_audit`). `details` carries safe metadata only.
+- **Measured:** permission evaluation including opening the tenant transaction: p50 5.2 ms, p95 6.5 ms (300 calls, 500 members x 2 roles, local Postgres 16, single client). Target is p95 <= 200 ms; production-scale and concurrent load not yet measured.
+- **Not yet built:** failed-login audit (tenant unknown at that point), preview/download/upload audit (document sprints), privileged org-admin document access auditing (documents sprint), audit export and one-year retention job, custom role create/edit endpoints (admin UI sprint), department/project-scoped assignments.
+- **Known gap:** `GET /api/v1/memberships` (Sprint 2) is open to any authenticated member of the tenant; it gets a permission rule in the organization sprint.
+
+## 4. Planned
 RBAC roles/permissions, document-level policy (classification, ownership, grants, workflow state, legal hold), admin-privilege audit: Sprint 5 onward.

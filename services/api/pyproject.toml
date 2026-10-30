@@ -25,4 +25,4 @@ pythonpath = ["."]
 line-length = 100
 
 [tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "app.core.tenancy.require_permission"]

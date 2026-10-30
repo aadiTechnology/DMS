@@ -73,3 +73,18 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** login p95 <= 2 s (no load test yet; Argon2 default cost is a tunable); CI on GitHub; behavior behind a proxy (rate limit uses socket IP; trusted-proxy handling needed at deployment).
 
 **Next recommended:** Sprint 4, organization structure (departments, branches, projects, designations, employee assignments; ORG-001..008).
+
+## Sprint 4: RBAC engine and audit base (done) — reordered ahead of organization structure
+**Why reordered:** organization-structure writes need permission checks, so RBAC and audit come first; organization structure is now Sprint 5, everything after shifts by one only in order, not in content.
+
+**Changed:** migration `0004` (roles, role_permissions, user_role_assignments, append-only audit_events, RLS, grants), `app/core/permissions.py`, `app/services/{rbac,audit,tenants}.py`, `require_permission` in `app/core/tenancy.py`, endpoints `GET /api/v1/me/permissions`, `GET /api/v1/roles`, `GET|POST /api/v1/role-assignments`, `DELETE /api/v1/role-assignments/{id}`, `GET /api/v1/audit-events`; auth events now audited; TS `PERMISSIONS` contract.
+
+**Decision (simple terms):** what people may do is stored as editable roles in the database, checked on every request, and every permission change, denial and sign-in is written to a tamper-resistant log the application cannot edit or delete.
+
+**Requirements touched:** PRD 7.2-7.4 (data-driven RBAC, deny by default, revocation), success metric "100% of permission changes create audit events", partial audit (PRD 15.1). Not complete: resource-level policy (documents sprints).
+
+**Tests executed (observed, local Postgres 16):** `uv run pytest -q` 68 passed (16 new RBAC/audit tests); `ruff` clean; `npm run build` ok, `npm test` 3 passed. Benchmark: permission evaluation p95 6.5 ms (see AUTHORIZATION_MODEL.md section 3).
+
+**Not verified:** non-superuser owner role in production-like setup (provisioning sets tenant context to satisfy RLS, but only a superuser was exercised); CI on GitHub.
+
+**Next recommended:** Sprint 5, organization structure with permission-checked writes (departments, branches, projects, designations, employee assignments; ORG-001..008), including scoped role assignments and gating `GET /memberships`.

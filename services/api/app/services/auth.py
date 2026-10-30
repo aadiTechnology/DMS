@@ -17,6 +17,7 @@ from app.core.security import (
     verify_password,
 )
 from app.db.models import Tenant, TenantMembership, User, UserSession
+from app.services import audit
 
 
 @dataclass
@@ -97,7 +98,11 @@ def login(
     user.failed_login_count = 0
     user.locked_until = None
     user.last_login_at = now
-    return AuthResult("ok", tokens=_issue(db, settings, user.id, tenant_id))
+    tokens = _issue(db, settings, user.id, tenant_id)
+    audit.record(
+        db, tenant_id=tenant_id, actor_user_id=user.id, action="auth.login", resource_type="session"
+    )
+    return AuthResult("ok", tokens=tokens)
 
 
 def refresh(db: Session, settings: Settings, refresh_token: str) -> AuthResult:
@@ -111,6 +116,15 @@ def refresh(db: Session, settings: Settings, refresh_token: str) -> AuthResult:
         ).first()
         if stale is not None and stale.revoked_at is None:
             stale.revoked_at, stale.revoked_reason = now, "refresh_reuse"
+            audit.record(
+                db,
+                tenant_id=stale.tenant_id,
+                actor_user_id=stale.user_id,
+                action="auth.refresh_reuse_detected",
+                resource_type="session",
+                resource_id=stale.id,
+                outcome="failure",
+            )
         return AuthResult("invalid")
     if session.revoked_at is not None or session.expires_at <= now:
         return AuthResult("invalid")
@@ -155,3 +169,11 @@ def logout(db: Session, session_id: uuid.UUID) -> None:
     session = db.get(UserSession, session_id)
     if session is not None and session.revoked_at is None:
         session.revoked_at, session.revoked_reason = _now(), "logout"
+        audit.record(
+            db,
+            tenant_id=session.tenant_id,
+            actor_user_id=session.user_id,
+            action="auth.logout",
+            resource_type="session",
+            resource_id=session.id,
+        )

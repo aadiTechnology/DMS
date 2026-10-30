@@ -18,3 +18,5 @@ export type DocumentState = (typeof DOCUMENT_STATES)[number];
 
 /** PRD STO-001: maximum individual file size, default 100 MB. */
 export const DEFAULT_MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+
+export * from "./permissions";
