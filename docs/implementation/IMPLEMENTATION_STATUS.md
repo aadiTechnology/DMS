@@ -278,3 +278,6 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Bugs found by tests and fixed:** a join that reused the grant table broke the visibility sub-queries (aliased); listing tried to read login accounts (denied by design).
 
 **Tests executed (observed):** 8 new sharing tests; full suite `uv run pytest -q`: 332 passed, 2 skipped (live B2); `ruff` clean.
+
+## Live Backblaze verification (addendum)
+Live test `tests/test_storage_b2_live.py` run by the owner against a dedicated private test bucket with a bucket-restricted key: **2 passed**. Verified live: private-bucket check, key capabilities and bucket restriction, upload, stat, read (latest and by file id), no-overwrite, signed download link with forced attachment. Found and fixed by the first run: header overrides on download links need a token issued with the same values (commit 6634cd7). **Still not verified live:** large multi-part uploads, server-side copy (restore), delete of all versions, key behavior under expiry/rotation. The test key should be deleted when testing ends.
