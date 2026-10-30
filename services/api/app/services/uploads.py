@@ -38,7 +38,7 @@ from app.db.models import (
     Tag,
     TenantMembership,
 )
-from app.services import audit, taxonomy
+from app.services import audit, extraction, search, taxonomy
 from app.services.filetypes import FileRejected, check_declared_type, check_extension
 from app.services.metadata import validate_values
 from app.services.org import Conflict, Invalid, NotFound
@@ -317,6 +317,10 @@ def finalize_available(
     document.lifecycle_state = "submitted" if approval_required else "approved"
     document.row_version += 1
     document.updated_at = _now()
+    search.index_metadata(
+        db, document, version.original_filename,
+        content_supported=search.extraction_ext(version.original_filename) in extraction.SUPPORTED,
+    )  # fmt: skip
     audit.record(
         db, tenant_id=tenant_id, actor_user_id=actor_id, action="document.uploaded",
         resource_type="document", resource_id=document.id,

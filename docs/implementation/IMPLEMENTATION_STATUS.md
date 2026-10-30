@@ -214,3 +214,18 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** running migrations as a non-superuser database owner (design supports it, only a superuser was exercised); real Backblaze links; CI on GitHub.
 
 **Next recommended:** Sprint 13, search and list: full-text and metadata search with permission-aware filters, facets and counts (SQL form of the same policy plus an equivalence test against `decide()`), and text extraction in a worker.
+
+## Sprint 13: Search and document lists (done)
+**Changed:** migration `0011` (`document_search` with GIN indexes), `app/services/{access_sql,search,extraction,extract_worker}.py`, `app/api/search.py`, indexing hooks (metadata when a version becomes available; content extraction after the upload response), per-user search rate limit, settings (`SEARCH_*`, `EXTRACT_*`), dependencies `pypdf` and `defusedxml`, test sample builders (`tests/samples.py`).
+
+**Decision (simple terms):** people search by typing a few words; the system finds documents whose title, file name, extra fields, tags or contents contain every word (typing the start of a word is enough, in English, Hindi or Marathi), but only among documents they are allowed to see. The list of what they may see is computed by the same rules as opening a document, and a test proves the two never disagree. The search index never stores who may see what, so a revoked share vanishes from results immediately. Reading document text happens in a separate, time-limited helper process so a malicious file cannot hang the system.
+
+**Requirements touched:** SRCH-001..006 and SRCH-009 (stable sort and pagination), TAG-004, ORG-007 groundwork (filters), permission-aware facets/counts (PRD 7.4, 19.1 search security), index failures visible to admins (SRCH-002), asynchronous extraction (PRD 9.2). Deferred (P1): highlighting/snippets (SRCH-007), autocomplete and recent searches (SRCH-008). Not yet: expiry-date filter (needs retention), document-level reindex on metadata/tag edits (no edit endpoints yet), CSV/XLSX export.
+
+**Bugs found by the tests and fixed:** (1) the extractor printed non-ASCII text in the console encoding, corrupting Hindi and accented text on Windows (worker output is now ASCII-escaped JSON); (2) a multi-word search required all words to be in the same field, so "strategy annual" (one word in the content, one in the title) found nothing (each word may now match title/metadata or content).
+
+**Tests executed (observed, local Postgres 16):** `uv run pytest -q` 293 passed, 2 skipped (live B2); `ruff` clean. New: 9 extraction/query tests (six formats, encodings, truncation, corrupt, hostile XML, timeout, query sanitizing), 15 search tests (every content type, Hindi/Marathi, prefixes, metadata/tags, filters, sorting, stable pagination, facets, leakage, privileged audit, share revocation, pending/archived, cross-tenant, rate limit, index health, resumable queue, and the policy-equivalence proof).
+
+**Not verified:** 100,000 documents per organization and concurrent users; Postgres FTS ranking quality on real documents; scanned PDFs (no OCR by design); a real worker process schedule (extraction currently runs after each upload and via the admin "run" call; a periodic job is a deployment task); CI on GitHub. The full test run now takes about 9.5 minutes (mostly password hashing and database creation per test); speeding it up is planned for the hardening sprint.
+
+**Next recommended:** Sprint 14, document versions and approvals: upload a new version, version history, restore, concurrency checks, approval workflow (reviewers, queue, approve/reject with reasons, resubmission) and notifications hooks.

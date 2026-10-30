@@ -17,7 +17,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, created_at_col, uuid_pk
@@ -732,3 +732,36 @@ class DocumentAccessGrant(Base):
         ForeignKey("users.id", ondelete="RESTRICT", name="fk_dag_revoked_by_user"),
         nullable=True,
     )
+
+
+class DocumentSearch(Base):
+    """Search index for one document: weighted metadata vector (title, file name, searchable
+    metadata, tags) and the extracted-content vector of the current version. It holds no access
+    information: who may see a result is decided at query time, so revocation is immediate."""
+
+    __tablename__ = "document_search"
+    __table_args__ = (
+        CheckConstraint(
+            "extraction_status IN ('pending','processing','indexed','failed','unsupported')",
+            name="extraction_status",
+        ),
+        Index("ix_document_search_meta_tsv", "meta_tsv", postgresql_using="gin"),
+        Index("ix_document_search_content_tsv", "content_tsv", postgresql_using="gin"),
+        Index("ix_document_search_tenant_id_status", "tenant_id", "extraction_status"),
+    )
+
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="RESTRICT"), primary_key=True
+    )
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    meta_tsv: Mapped[Any] = mapped_column(TSVECTOR, nullable=True)
+    content_tsv: Mapped[Any] = mapped_column(TSVECTOR, nullable=True)
+    content_version_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    extraction_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="pending"
+    )
+    failure_reason: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    truncated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    indexed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = created_at_col()

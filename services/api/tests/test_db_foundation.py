@@ -33,6 +33,7 @@ TABLES = {
     "document_tags",
     "document_versions",
     "document_access_grants",
+    "document_search",
 }
 
 

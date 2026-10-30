@@ -24,6 +24,7 @@ def world(env, tmp_path, monkeypatch):
     monkeypatch.setattr(get_settings(), "UPLOAD_TMP_DIR", str(tmp_path / "tmp"))
     storage = LocalStorage(Settings(_env_file=None, STORAGE_LOCAL_DIR=str(tmp_path / "store")))
     monkeypatch.setattr("app.api.documents.get_storage", lambda: storage)
+    monkeypatch.setattr("app.api.search.get_storage", lambda: storage)
     env.storage, env.tmp = storage, tmp_path / "tmp"
     with tenant_session(env.ta, env.engine) as s:
         rbac.assign_role(s, env.ta, env.admin_a, env.mem_emp, env.roles_a["employee"])

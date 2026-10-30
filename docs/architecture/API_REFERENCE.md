@@ -57,6 +57,10 @@ Category policy fields: `approval_required`, `required_dimensions` (department, 
 | GET `/documents/{id}/versions/{n}/download-url` | document.download + access policy | `{url, expires_in_seconds, filename, content_type, size_bytes}`; link forces download; audited; `Cache-Control: no-store` |
 | GET `/documents/{id}/versions/{n}/preview-url` | document.preview + access policy | Same, inline; 415 `preview_unavailable` for anything but PDF, PNG, JPEG |
 
+| GET `/search` | document.view_metadata | Search and list documents you may see. Text `q` (up to 8 words, each matched as a prefix, all must match in title/file name/searchable metadata/tags or extracted content); filters `category_id` (+ `include_subcategories`), `department_id`, `branch_id`, `project_id`, `employee_id`, `owner_id`, `uploader_id`, `status`, `classification`, `tag_id`, `date_field` (created, modified, uploaded) with `date_from`/`date_to`; `sort` relevance, date or title; `limit` 1-100, `offset`. Returns `items`, `total` and `facets` (category, classification, status, department) counted only over visible documents. Rate limited per user. Without `q` it is the filtered document list |
+| GET `/search/index/status` | admin.manage_organization | Extraction counts (pending, processing, indexed, failed, unsupported) and failures with reason codes (no titles or content) |
+| POST `/search/index/retry`, POST `/search/index/run` | admin.manage_organization | Re-queue failed extractions; process queued extractions now |
+
 Login with MFA on: `POST /auth/login` answers `401 {"detail":{"code":"mfa_required"}}` after a correct password; resend with `mfa_code` (authenticator or recovery code). Wrong codes count toward lockout.
 
 Planned groups follow the PRD section 17 list as each sprint ships.

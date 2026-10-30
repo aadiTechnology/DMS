@@ -38,3 +38,16 @@ def limit_auth_requests(request: Request) -> None:
             detail="Too many requests. Try again later.",
             headers={"Retry-After": "60"},
         )
+
+
+search_limiter = SlidingWindowLimiter()
+
+
+def limit_search(user_key: str) -> None:
+    """Per-user limit on expensive search requests (PRD 17.1)."""
+    if not search_limiter.allow(user_key, get_settings().SEARCH_RATE_LIMIT_PER_MINUTE):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many searches. Try again shortly.",
+            headers={"Retry-After": "30"},
+        )

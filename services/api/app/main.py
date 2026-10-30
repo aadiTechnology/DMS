@@ -11,6 +11,7 @@ from app.api import (
     onboarding,
     org,
     rbac,
+    search,
     sso,
     taxonomy,
 )
@@ -27,6 +28,7 @@ app.include_router(rbac.router)
 app.include_router(audit.router)
 app.include_router(taxonomy.router)
 app.include_router(documents.router)
+app.include_router(search.router)
 if dev_storage_enabled(get_settings()):
     app.include_router(dev_storage.router)
 

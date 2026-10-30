@@ -3,7 +3,17 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    status,
+)
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
@@ -19,7 +29,7 @@ from app.core.tenancy import (
     require_permission,
 )
 from app.db.tenant_session import tenant_session
-from app.services import access, rbac, uploads
+from app.services import access, rbac, search, uploads
 from app.services.filetypes import FileRejected, check_declared_type, detect, extension_of
 from app.services.metadata import MetadataInvalid
 from app.services.org import Conflict, Invalid, NotFound
@@ -190,6 +200,16 @@ def _retry_later(principal: Principal, version_id, reason: str) -> None:
         logger.exception("could not reopen upload %s after %s", version_id, reason)
 
 
+def _index_content(tenant_id, document_id) -> None:
+    """After the response: extract text so the document becomes searchable by content."""
+    try:
+        search.process_pending(
+            tenant_id, get_storage(), get_settings(), document_id=document_id, limit=1
+        )
+    except Exception:
+        logger.exception("content indexing failed for document %s", document_id)
+
+
 def _validate_and_scan(ctx, spool, settings):
     ext = extension_of(ctx.filename)
     check_declared_type(ext, ctx.declared_content_type)
@@ -199,7 +219,10 @@ def _validate_and_scan(ctx, spool, settings):
 
 @router.put("/uploads/{version_id}/content", response_model=UploadResultOut)
 async def upload_content(
-    version_id: uuid.UUID, request: Request, principal: Principal = Depends(get_principal)
+    version_id: uuid.UUID,
+    request: Request,
+    background: BackgroundTasks,
+    principal: Principal = Depends(get_principal),
 ):
     """Step 2: send the raw file bytes as the request body (Content-Length required). The server
     streams them to temporary disk, hashes once, checks the real file type, scans for malware,
@@ -254,6 +277,7 @@ async def upload_content(
                 approval_required=ctx.approval_required,
             )
         )
+        background.add_task(_index_content, principal.tenant_id, document.id)
         return _result_out(document, version)
     except FileRejected as exc:
         await run_in_threadpool(

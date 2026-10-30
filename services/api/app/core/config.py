@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     # Uploads (PRD section 8.1)
     UPLOAD_RESERVATION_MINUTES: int = Field(default=60, ge=5, le=1440)
     UPLOAD_TMP_DIR: str = ""  # empty = the system temp folder
+    # Search and text extraction (PRD section 9)
+    SEARCH_RATE_LIMIT_PER_MINUTE: int = Field(default=120, ge=1)
+    EXTRACT_TIMEOUT_SECONDS: int = Field(default=60, ge=5, le=600)
+    EXTRACT_MAX_CHARS: int = Field(default=2_000_000, ge=1000, le=20_000_000)
+    EXTRACT_MAX_ATTEMPTS: int = Field(default=3, ge=1, le=10)
     # Malware scanning. `dev` is a stand-in for development only; production needs ClamAV.
     SCANNER_BACKEND: Literal["dev", "clamav"] = "dev"
     CLAMD_HOST: str = "localhost"

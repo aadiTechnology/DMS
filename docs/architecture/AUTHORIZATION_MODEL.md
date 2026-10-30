@@ -88,5 +88,14 @@ Evaluation order:
 
 **Next:** the same rules as a SQL filter for lists, search, counts and exports (search sprint), with a test that compares it with `decide()` so they cannot drift; reviewers for pending documents (approval sprint).
 
-## 8. Planned
+## 8. Search and lists (Sprint 13, implemented and tested)
+
+- **One policy, two forms.** `access_sql.visible_clause()` is the SQL version of `access.decide(..., "view_metadata")` used by search, lists, totals and facets. `tests/test_search.py::test_sql_visibility_equals_the_policy_engine_for_every_viewer` builds 108 documents (every classification, state, association and ownership mix, plus valid/expired/revoked shares) and proves both give identical results for 14 kinds of viewer (owner, stranger, department manager and member, project manager and member, reviewer, no-role user, administrator, exited employee, ended project member, share holders). If either side changes, that test fails.
+- **The index holds no permissions.** It stores only text vectors. Who may see a result is decided at query time, so revoking a share, deactivating a membership or changing a role takes effect on the next request; there is no stale-index window to manage. Archived documents remain searchable to authorized users.
+- **No leakage through side channels.** Results, `total` and facet counts cover only visible documents; an unauthorized caller searching for a word that exists only inside a hidden document gets zero results; pending documents are visible to their uploader only; administrators' searches are flagged and audited (`document.privileged_search`, one entry per search with the term count, not the document list). Search is rate limited per user.
+- **Text extraction** runs in a separate, time-limited process (never inside the API), with caps on pages, part sizes and characters, hardened XML parsing (entity bombs are refused) and reason codes instead of error text. Supported: PDF, DOCX, XLSX, PPTX, TXT, CSV. Not supported (reported as `unsupported`, still findable by title, file name and metadata): legacy DOC/XLS/PPT and images (OCR is outside the MVP). Failures are visible to administrators with a retry button.
+- **Languages:** PostgreSQL `simple` configuration: Hindi, Marathi and English words are indexed whole and found by prefix; there is no stemming (searching "report" does not match "reports").
+- **Measured (30,000 documents in one organization, local Postgres, one client, synthetic data):** employee list with facets p50 349 ms, max 765 ms; title/prefix/content searches p50 133-300 ms; administrator list p50 115 ms. PRD targets are 2-3 s p95 at 100,000 documents per organization; 100,000 and concurrent load are not yet measured.
+
+## 9. Planned
 RBAC roles/permissions, document-level policy (classification, ownership, grants, workflow state, legal hold), admin-privilege audit: Sprint 5 onward.
