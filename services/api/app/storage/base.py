@@ -81,7 +81,12 @@ class StorageProvider(Protocol):
         to read that exact version. Raises ObjectNotFound."""
         ...
 
-    def create_download_url(self, key: str, *, ttl_seconds: int, filename: str) -> str: ...
+    def create_download_url(
+        self, key: str, *, ttl_seconds: int, filename: str, inline: bool = False
+    ) -> str:
+        """Short-lived exact-key link. `inline` (preview) is only for types the caller has
+        verified are safe to render (PDF, PNG, JPEG); everything else is a forced download."""
+        ...
 
     def delete(self, key: str) -> bool:
         """Remove every stored version of an object (only after lifecycle approval).

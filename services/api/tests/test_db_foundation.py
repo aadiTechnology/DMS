@@ -32,6 +32,7 @@ TABLES = {
     "document_associations",
     "document_tags",
     "document_versions",
+    "document_access_grants",
 }
 
 

@@ -435,13 +435,18 @@ def test_permissions_and_visibility(world):
     assert {"document.upload"} <= {e["resource_id"] for e in denied}
 
 
-def test_uploads_and_documents_are_private_to_their_uploader_for_now(world):
+def test_uploads_belong_to_their_uploader_and_admin_access_is_privileged(world):
     w = world
     r = reserve(w, h=w.emp)
     vid, doc_id = r.json()["version_id"], r.json()["document_id"]
-    assert send(w, vid, h=w.admin).status_code == 404  # cannot complete someone else's upload
-    assert w.client.get(f"/api/v1/documents/{doc_id}", headers=w.admin).status_code == 404
+    assert send(w, vid, h=w.admin).status_code == 404  # nobody can complete someone else's upload
     assert w.client.get("/api/v1/documents/mine", headers=w.admin).json() == []
+    # an unpublished document is visible to administrators only through the audited privileged path
+    assert w.client.get(f"/api/v1/documents/{doc_id}", headers=w.admin).status_code == 200
+    log = w.client.get(
+        "/api/v1/audit-events", params={"action": "document.privileged_access"}, headers=w.admin
+    ).json()
+    assert len(log) == 1 and log[0]["privileged"] is True
     assert send(w, vid, h=w.emp).status_code == 200
 
 

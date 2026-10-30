@@ -273,3 +273,12 @@ def test_capability_report_flags_missing_and_unrestricted_keys():
 def test_secret_is_not_in_adapter_repr_or_settings_dump():
     assert "test-app-key-SECRET" not in repr(SETTINGS)
     assert "test-app-key-SECRET" not in str(SETTINGS.model_dump())
+
+
+def test_inline_download_url_uses_inline_disposition(b2):
+    key = key_for()
+    put(b2, key, b"%PDF-1.7 data")
+    query = parse_qs(
+        urlparse(b2.create_download_url(key, ttl_seconds=60, filename="a.pdf", inline=True)).query
+    )
+    assert query["b2ContentDisposition"][0].startswith("inline; filename*=UTF-8''")

@@ -3,6 +3,7 @@
 Roles are data in the database; these templates only seed each new tenant. A permission is an
 action ceiling: it says what a role may attempt. Which specific documents it applies to is
 decided later by resource-level policy (classification, ownership, grants, workflow state).
+`document.access_all` is the privileged path: every use is audited.
 The same codes live in packages/domain/src/permissions.ts; a test keeps them identical.
 """
 
@@ -21,6 +22,7 @@ PERMISSIONS: tuple[str, ...] = (
     "document.request_delete",
     "document.approve_delete",
     "document.manage_permissions",
+    "document.access_all",
     "admin.manage_taxonomy",
     "admin.manage_users",
     "admin.manage_organization",

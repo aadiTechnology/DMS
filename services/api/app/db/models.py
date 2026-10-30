@@ -690,3 +690,45 @@ class DocumentVersion(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = created_at_col()
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DocumentAccessGrant(Base):
+    """Direct employee-to-employee share (PRD 9.3). `can_download` is separate from `can_view`:
+    viewing never implies downloading. Revoked rows are kept as history."""
+
+    __tablename__ = "document_access_grants"
+    __table_args__ = (
+        Index(
+            "uq_document_access_grants_active",
+            "document_id",
+            "grantee_membership_id",
+            unique=True,
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
+        Index("ix_document_access_grants_tenant_id_grantee", "tenant_id", "grantee_membership_id"),
+        CheckConstraint("can_view OR can_download", name="some_right"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="RESTRICT"), nullable=False
+    )
+    grantee_membership_id: Mapped[uuid.UUID] = _membership_fk(
+        nullable=False, fk_name="fk_dag_grantee_membership"
+    )
+    can_view: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    can_download: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    granted_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="RESTRICT", name="fk_dag_granted_by_user"),
+        nullable=False,
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = created_at_col()
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="RESTRICT", name="fk_dag_revoked_by_user"),
+        nullable=True,
+    )

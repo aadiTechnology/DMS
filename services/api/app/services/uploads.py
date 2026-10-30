@@ -398,7 +398,29 @@ def _can_see(db: Session, tenant_id, actor_id, document: Document) -> bool:
     return owner is not None and owner.user_id == actor_id
 
 
+def document_detail(db: Session, document: Document):
+    """Versions, associations and tags of a document the caller is already authorized to see."""
+    versions = list(
+        db.scalars(
+            select(DocumentVersion)
+            .where(DocumentVersion.document_id == document.id)
+            .order_by(DocumentVersion.version_number)
+        )
+    )
+    assoc = list(
+        db.scalars(
+            select(DocumentAssociation).where(DocumentAssociation.document_id == document.id)
+        )
+    )
+    tags = [
+        t.tag_id
+        for t in db.scalars(select(DocumentTag).where(DocumentTag.document_id == document.id))
+    ]
+    return document, versions, assoc, tags
+
+
 def get_document(db: Session, tenant_id, actor_id, document_id):
+    """Uploader/owner view used by the 'my documents' list."""
     document = db.get(Document, document_id)
     if (
         document is None

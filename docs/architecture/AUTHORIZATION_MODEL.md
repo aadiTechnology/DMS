@@ -62,5 +62,31 @@ Three independent layers, so one mistake cannot expose another customer's data:
 - **MFA (TOTP, RFC 6238).** Optional per person, for password sign-in. SSO relies on the provider's own MFA. Secrets are encrypted at rest (Fernet, key from `MFA_ENCRYPTION_KEY` or derived from `SECRET_KEY`; if the key changes, affected people fail verification until an admin resets them, no crash). A code works once (replay blocked) with +/-30 s clock tolerance. 8 single-use recovery codes are stored hashed. Wrong codes count toward the same lockout as wrong passwords. Turning it off needs password plus a code. Admins with `admin.manage_users` can reset a lost device (audited as privileged).
 - **Not built / limits:** tenant-wide "MFA required" policy (PRD allows stronger policy later), MFA for SSO users, WebAuthn, provider logout, SSO account unlinking UI/endpoint, real provider app registrations (you must create Google and Microsoft OAuth clients and set `SSO_GOOGLE_CLIENT_ID` / `SSO_MICROSOFT_CLIENT_ID`). Verification was tested against locally generated keys and tokens, **not** against live Google/Microsoft.
 
-## 7. Planned
+## 7. Document access policy (Sprint 12, implemented and tested)
+
+`app/services/access.py: decide()` answers "may this person view metadata / preview / download this document right now?". It runs on every protected request; hiding a button is never the control.
+
+Evaluation order:
+1. **Role ceiling.** The person's roles must grant `document.view_metadata`, `document.preview` or `document.download`. Shares never exceed this (a user whose role cannot download cannot be given download by a share; answer 403).
+2. **Publication state.** Draft, submitted, under review and rejected documents are visible only to their uploader and owner (reviewers join with the approval workflow). Approved and archived documents follow the classification rules.
+3. **Classification (PRD 7.1)**
+
+| Level | Who |
+|---|---|
+| Public, Internal | every active employee of the organization |
+| Confidential | owner; uploader; direct share; managers and members of the associated departments; managers and members of the associated projects |
+| Highly Confidential | owner; managers of the associated departments; direct share. The uploader (if not the owner) may see metadata to follow the upload but not open the file |
+
+4. **Direct shares** (`document_access_grants`): `can_view` covers metadata and preview, `can_download` is separate (viewing never implies downloading). Revoked or expired shares stop working on the next request. The endpoints that create shares arrive in the sharing sprint; the policy already honors them.
+5. **Privileged access.** Holders of `document.access_all` (only the organization administrator role template has it) may reach any document, including pending and Highly Confidential ones. That path is flagged privileged and **every use is audited** (`document.privileged_access`, `privileged = true`, with the action, classification and version). An administrator who is also the owner uses the normal path and is not flagged. Platform staff have no such permission.
+
+**Refusals** answer 404 (403 only when the role itself lacks the right), so a document's existence is not revealed; each refusal is audited (`document.access_denied` with the reason). **Links:** `GET /documents/{id}/versions/{n}/download-url` and `/preview-url` issue a 5-minute (configurable, max 15) link only after the policy check; every issue is audited without storing the link. Download forces an attachment; preview is inline and only for PDF, PNG and JPEG (verified by file signature at upload); everything else downloads. A link already issued works until it expires even if access is revoked in the meantime (residual window = link lifetime).
+
+**Decisions to review (Product Owner):** (a) "Confidential" is interpreted as owner/uploader plus managers and members of the associated departments and projects plus direct shares; a stricter reading (managers only) is a one-line change. (b) The uploader of a Highly Confidential document they do not own cannot open it after upload, following the PRD list literally. (c) Administrator privilege is a permission (`document.access_all`), not a role name, so a tenant could withhold it; the default template grants it, as the PRD requires.
+
+**Measured:** one access decision, including opening the tenant transaction and loading roles: p50 8.8 ms, p95 10.8 ms (400 decisions, 500 documents, 300 members, local Postgres, single client). Target p95 <= 200 ms.
+
+**Next:** the same rules as a SQL filter for lists, search, counts and exports (search sprint), with a test that compares it with `decide()` so they cannot drift; reviewers for pending documents (approval sprint).
+
+## 8. Planned
 RBAC roles/permissions, document-level policy (classification, ownership, grants, workflow state, legal hold), admin-privilege audit: Sprint 5 onward.

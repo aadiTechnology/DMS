@@ -187,7 +187,9 @@ class BackblazeStorage:
                 while chunk := handle.read(chunk_size):
                     yield chunk
 
-    def create_download_url(self, key: str, *, ttl_seconds: int, filename: str) -> str:
+    def create_download_url(
+        self, key: str, *, ttl_seconds: int, filename: str, inline: bool = False
+    ) -> str:
         keys.assert_valid_key(key)
         check_ttl(ttl_seconds)
 
@@ -200,7 +202,9 @@ class BackblazeStorage:
             query = urlencode(
                 {
                     "Authorization": token,
-                    "b2ContentDisposition": _attachment(filename),
+                    "b2ContentDisposition": _disposition(
+                        filename, "inline" if inline else "attachment"
+                    ),
                     "b2CacheControl": "private, no-store",
                 }
             )
@@ -253,7 +257,7 @@ def _sha1_of(version) -> str | None:
     return None if value in (None, "none") else value
 
 
-def _attachment(filename: str) -> str:
+def _disposition(filename: str, kind: str = "attachment") -> str:
     from urllib.parse import quote
 
-    return f"attachment; filename*=UTF-8''{quote(keys.sanitize_filename(filename), safe='')}"
+    return f"{kind}; filename*=UTF-8''{quote(keys.sanitize_filename(filename), safe='')}"

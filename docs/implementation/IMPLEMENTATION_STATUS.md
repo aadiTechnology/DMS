@@ -201,3 +201,16 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** a real ClamAV daemon; 100 MB uploads (time and memory); Backblaze (still uses the local adapter in tests); behavior behind a reverse proxy with body-size limits (set the proxy limit above 100 MB); CI on GitHub.
 
 **Next recommended:** Sprint 12, access policy engine plus document download and preview (permission-checked, short-lived links, access audit including privileged administrator access), since uploads are only visible to their uploader until then.
+
+## Sprint 12: Access policy engine, download and preview (done)
+**Changed:** migration `0010` (`document_access_grants`, `document.access_all` added to existing org admin roles; migrations 0008/0010 backfills now lift FORCE RLS only for their statement so a non-superuser table owner can run them), `app/services/access.py`, new endpoints (document detail with access flags, `download-url`, `preview-url`), `inline` option in the storage interface (local and Backblaze adapters), permission catalog + TypeScript contract (`document.access_all`), authorization model section 7.
+
+**Decision (simple terms):** every time someone opens, previews or downloads a document the server asks one question, "may this person do this to this document right now?", using their role, whether the document is published yet, its security level (who owns it, which departments and projects it belongs to, who it was shared with) and, for administrators, a special audited permission. Refusals look like "not found" so nobody learns what exists. Download links are issued only after that check, last 5 minutes, and each one is logged.
+
+**Requirements touched:** PRD 7.1-7.4 (classification, deny by default, explicit grants honored, pending visibility WF-005, admin privilege audited), STO-008 (links only after authorization), DASH-007/15.1 (access events), SHR-002/006 groundwork (per-action grants capped by role). Not complete: creating/revoking shares (SHR), reviewers on pending documents, search/list filtering, document versions UI/endpoints, legal hold.
+
+**Tests executed (observed, local Postgres 16):** `uv run pytest -q` 269 passed, 2 skipped (live B2); `ruff` clean; `npm run build` and `npm test` pass. 15 policy tests (full matrix across public/internal/confidential/highly confidential, ownership, department and project membership incl. exited/ended, administrator path audited and not flagged for owners, unpublished states, grants per action/revoked/expired, role ceiling, links and dispositions, previews only for safe types, audit without link leakage, non-enumerating errors, cross-tenant). Benchmark: access decision p95 10.8 ms.
+
+**Not verified:** running migrations as a non-superuser database owner (design supports it, only a superuser was exercised); real Backblaze links; CI on GitHub.
+
+**Next recommended:** Sprint 13, search and list: full-text and metadata search with permission-aware filters, facets and counts (SQL form of the same policy plus an equivalence test against `decide()`), and text extraction in a worker.

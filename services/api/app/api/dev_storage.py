@@ -36,7 +36,9 @@ def download(token: str):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Not found") from None
     headers = {
         **NO_CACHE,
-        "Content-Disposition": storage.content_disposition(grant["f"]),
+        "Content-Disposition": storage.content_disposition(
+            grant["f"], grant.get("d", "attachment")
+        ),
         "Content-Length": str(info.size_bytes),
     }
     return StreamingResponse(

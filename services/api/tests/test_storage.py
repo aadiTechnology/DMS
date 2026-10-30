@@ -277,3 +277,17 @@ def test_factory_and_dev_router_gating(tmp_path):
         type(build_storage(b2)).__name__ == "BackblazeStorage"
     )  # connects lazily; no network here
     assert dev_storage_enabled(Settings(_env_file=None, **PROD, **B2)) is False
+
+
+def test_inline_links_are_opt_in_and_still_nosniff(storage, http):
+    key = key_for()
+    put(storage, key, b"%PDF-1.7 data")
+    attachment = http.get(
+        path_of(storage.create_download_url(key, ttl_seconds=60, filename="a.pdf"))
+    )
+    inline = http.get(
+        path_of(storage.create_download_url(key, ttl_seconds=60, filename="a.pdf", inline=True))
+    )
+    assert attachment.headers["content-disposition"].startswith("attachment")
+    assert inline.headers["content-disposition"].startswith("inline")
+    assert inline.headers["x-content-type-options"] == "nosniff"

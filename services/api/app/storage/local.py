@@ -107,7 +107,9 @@ class LocalStorage:
             writer.close()
         return StoredObject(file_id=None, size_bytes=size, sha1=sha1)
 
-    def create_download_url(self, key: str, *, ttl_seconds: int, filename: str) -> str:
+    def create_download_url(
+        self, key: str, *, ttl_seconds: int, filename: str, inline: bool = False
+    ) -> str:
         keys.assert_valid_key(key)
         check_ttl(ttl_seconds)
         payload = {
@@ -115,6 +117,7 @@ class LocalStorage:
             "m": "GET",
             "e": int(time.time()) + ttl_seconds,
             "f": keys.sanitize_filename(filename),
+            "d": "inline" if inline else "attachment",
         }
         return self._url(payload)
 
@@ -178,8 +181,8 @@ class LocalStorage:
             writer.close()
 
     @staticmethod
-    def content_disposition(filename: str) -> str:
-        return f"attachment; filename*=UTF-8''{quote(filename, safe='')}"
+    def content_disposition(filename: str, disposition: str = "attachment") -> str:
+        return f"{disposition}; filename*=UTF-8''{quote(filename, safe='')}"
 
 
 class ExclusiveWriter:

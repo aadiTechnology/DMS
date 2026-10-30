@@ -161,11 +161,14 @@ def upgrade() -> None:
     )
     op.execute(f"GRANT UPDATE (allow_employee_tags) ON tenants TO {APP_ROLE}")
     # Backfill the system lifecycle tags (TAG-003) for tenants that already exist.
+    # FORCE is lifted only for this statement so a non-superuser table owner can run it.
+    op.execute("ALTER TABLE tags NO FORCE ROW LEVEL SECURITY")
     op.execute(
         "INSERT INTO tags (tenant_id, name, kind) "
         "SELECT t.id, n.name, 'system' FROM tenants t "
         "CROSS JOIN (VALUES ('Pending'), ('Approved'), ('Archived')) AS n(name)"
     )
+    op.execute("ALTER TABLE tags FORCE ROW LEVEL SECURITY")
 
 
 def downgrade() -> None:

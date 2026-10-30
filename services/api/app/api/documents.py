@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.requests import ClientDisconnect
 
@@ -18,7 +19,7 @@ from app.core.tenancy import (
     require_permission,
 )
 from app.db.tenant_session import tenant_session
-from app.services import uploads
+from app.services import access, rbac, uploads
 from app.services.filetypes import FileRejected, check_declared_type, detect, extension_of
 from app.services.metadata import MetadataInvalid
 from app.services.org import Conflict, Invalid, NotFound
@@ -311,15 +312,130 @@ def my_documents(
     ]
 
 
-@router.get("/{document_id}", response_model=DocumentOut)
+PREVIEWABLE_TYPES = frozenset({"application/pdf", "image/png", "image/jpeg"})
+
+
+class AccessFlags(BaseModel):
+    preview: bool
+    download: bool
+
+
+class DocumentDetail(DocumentOut):
+    access: AccessFlags
+
+
+class LinkOut(BaseModel):
+    url: str
+    expires_in_seconds: int
+    filename: str
+    content_type: str | None
+    size_bytes: int | None
+
+
+NO_STORE = {"Cache-Control": "no-store"}
+
+
+def _authorize(principal: Principal, db: Session, document_id, action: str, permissions=None):
+    """Policy check. A refusal is audited in its own transaction (this request's transaction is
+    rolled back by the error) and answered without revealing whether the document exists."""
+    try:
+        return access.require(
+            db, principal.tenant_id, principal.user_id, document_id, action, permissions
+        )
+    except access.Denied as denied:
+        with tenant_session(principal.tenant_id) as audit_db:
+            access.record_denied(
+                audit_db, principal.tenant_id, principal.user_id, document_id, action, denied.reason
+            )
+        if denied.reason == "role_lacks_permission":
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Permission denied") from None
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="document not found") from None
+
+
+@router.get("/{document_id}", response_model=DocumentDetail)
 def get_document(
     document_id: uuid.UUID,
     principal: Principal = Depends(get_principal),
     db: Session = Depends(get_tenant_db),
 ):
-    try:
-        return _document_out(
-            *uploads.get_document(db, principal.tenant_id, principal.user_id, document_id)
+    """Metadata of a document you may see. `access` tells the UI which buttons to offer; the
+    server re-checks on every preview or download."""
+    perms = rbac.effective_permissions(db, principal.tenant_id, principal.user_id)
+    document, decision = _authorize(principal, db, document_id, "view_metadata", perms)
+    access.record_access(
+        db, principal.tenant_id, principal.user_id, document, decision, "view_metadata"
+    )
+    flags = {
+        action: access.decide(
+            db, principal.tenant_id, principal.user_id, document, action, perms
+        ).allowed
+        for action in ("preview", "download")
+    }
+    body = _document_out(*uploads.document_detail(db, document))
+    return DocumentDetail(**body.model_dump(), access=AccessFlags(**flags))
+
+
+def _link(principal, db, document_id, number: int, action: str, response: Response) -> LinkOut:
+    document, decision = _authorize(principal, db, document_id, action)
+    version = db.scalars(
+        select(uploads.DocumentVersion).where(
+            uploads.DocumentVersion.document_id == document.id,
+            uploads.DocumentVersion.version_number == number,
+            uploads.DocumentVersion.status == "available",
         )
-    except NotFound as exc:
-        raise _http(exc) from None
+    ).first()
+    if version is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="version not found")
+    inline = action == "preview"
+    if inline and version.content_type not in PREVIEWABLE_TYPES:
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail={
+                "code": "preview_unavailable",
+                "message": "This file type has no preview; download it instead",
+            },
+        )
+    ttl = get_settings().DMS_DOWNLOAD_URL_TTL_SECONDS
+    try:
+        url = get_storage().create_download_url(
+            version.object_key, ttl_seconds=ttl, filename=version.original_filename, inline=inline
+        )
+    except StorageError:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            detail={"code": "storage_unavailable", "message": "Storage error; retry"},
+        ) from None
+    access.record_access(
+        db, principal.tenant_id, principal.user_id, document, decision, action,
+        version_number=number, always=True,
+    )  # fmt: skip
+    response.headers.update(NO_STORE)  # the link itself must never be cached
+    return LinkOut(
+        url=url, expires_in_seconds=ttl, filename=version.original_filename,
+        content_type=version.content_type, size_bytes=version.size_bytes,
+    )  # fmt: skip
+
+
+@router.get("/{document_id}/versions/{number}/download-url", response_model=LinkOut)
+def download_url(
+    document_id: uuid.UUID,
+    number: int,
+    response: Response,
+    principal: Principal = Depends(get_principal),
+    db: Session = Depends(get_tenant_db),
+):
+    """Short-lived link that forces a download. Issued only after the policy check; each issue is
+    audited (privileged access is flagged)."""
+    return _link(principal, db, document_id, number, "download", response)
+
+
+@router.get("/{document_id}/versions/{number}/preview-url", response_model=LinkOut)
+def preview_url(
+    document_id: uuid.UUID,
+    number: int,
+    response: Response,
+    principal: Principal = Depends(get_principal),
+    db: Session = Depends(get_tenant_db),
+):
+    """Short-lived link for in-browser viewing; only PDF, PNG and JPEG have a preview."""
+    return _link(principal, db, document_id, number, "preview", response)

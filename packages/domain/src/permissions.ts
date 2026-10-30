@@ -14,6 +14,7 @@ export const PERMISSIONS = [
   "document.request_delete",
   "document.approve_delete",
   "document.manage_permissions",
+  "document.access_all",
   "admin.manage_taxonomy",
   "admin.manage_users",
   "admin.manage_organization",
