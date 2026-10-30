@@ -88,3 +88,16 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** non-superuser owner role in production-like setup (provisioning sets tenant context to satisfy RLS, but only a superuser was exercised); CI on GitHub.
 
 **Next recommended:** Sprint 5, organization structure with permission-checked writes (departments, branches, projects, designations, employee assignments; ORG-001..008), including scoped role assignments and gating `GET /memberships`.
+
+## Sprint 5: Organization structure (done)
+**Changed:** migration `0005` (departments, branches, projects, designations, employee_profiles, project_memberships; RLS; no DELETE grants), `app/services/org.py`, `app/api/org.py` (generic `/org/{kind}`, `/employees`, project members), IntegrityError -> 409 handler, `docs/architecture/API_REFERENCE.md`. Removed the Sprint 2 demo `/memberships` endpoint and `MembershipRepository` (the base `TenantRepository` is still tested via a test-local subclass). New dep: `email-validator`.
+
+**Decision (simple terms):** the company's structure (departments, branches, projects, job titles) and each employee's place in it are stored per organization; items are switched off, never erased, so old documents keep making sense. Anyone can read the structure; only organization admins change it, and every change is logged.
+
+**Requirements touched:** ORG-001, ORG-002 (audited; authorization effect arrives with document policy), ORG-005, ORG-006, ORG-008 done at data/API level. ORG-003, ORG-004, ORG-007 pending later sprints. No UI yet.
+
+**Tests executed (observed, local Postgres 16):** `uv run pytest -q` 74 passed (11 new org tests); `ruff` clean.
+
+**Not verified:** CI on GitHub; performance of directory listing at 500 employees (not measured); non-superuser owner role.
+
+**Next recommended:** Sprint 6, authentication II and onboarding (employee invitations that create memberships and profiles, self-registration requests with admin approval, password set/reset via email token, Google/Microsoft SSO, optional MFA). Needs decisions already recorded as open: D9 email provider and D12 account-linking; I will build email behind an interface with a development console sender and propose provider/linking defaults.

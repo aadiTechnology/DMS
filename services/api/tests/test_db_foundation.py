@@ -14,6 +14,12 @@ TABLES = {
     "role_permissions",
     "user_role_assignments",
     "audit_events",
+    "departments",
+    "branches",
+    "projects",
+    "designations",
+    "employee_profiles",
+    "project_memberships",
 }
 
 

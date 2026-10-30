@@ -36,7 +36,16 @@ Three independent layers, so one mistake cannot expose another customer's data:
 - **Audit.** `audit_events` is append-only (the app role has no UPDATE/DELETE) and tenant-isolated. Recorded now: tenant provisioning, role assigned/revoked, permission denied (403), login, logout, refresh-token reuse. Read via `GET /api/v1/audit-events` (needs `admin.view_audit`). `details` carries safe metadata only.
 - **Measured:** permission evaluation including opening the tenant transaction: p50 5.2 ms, p95 6.5 ms (300 calls, 500 members x 2 roles, local Postgres 16, single client). Target is p95 <= 200 ms; production-scale and concurrent load not yet measured.
 - **Not yet built:** failed-login audit (tenant unknown at that point), preview/download/upload audit (document sprints), privileged org-admin document access auditing (documents sprint), audit export and one-year retention job, custom role create/edit endpoints (admin UI sprint), department/project-scoped assignments.
-- **Known gap:** `GET /api/v1/memberships` (Sprint 2) is open to any authenticated member of the tenant; it gets a permission rule in the organization sprint.
+- **Resolved in Sprint 5:** the unguarded Sprint 2 demo endpoint `GET /memberships` was removed; the employee directory now requires `admin.manage_organization`.
 
-## 4. Planned
+## 4. Organization structure (Sprint 5, implemented and tested)
+
+- Departments (with optional parent and manager), branches, projects (optional manager), designations, employee profiles and project membership. All tenant-isolated; **no table grants DELETE** to the app role, so entities can only be deactivated (ORG-008). Existing assignments to a deactivated entity stay readable (ORG-005); new assignments to it are refused.
+- Reading the structure is allowed to every member (upload forms and filters need it). Changing it, the employee directory and project members need `admin.manage_organization`. Every change is audited with changed-field names, not free text.
+- Guards: unique name and code per tenant (409), department cycle check, manager and reporting manager must be active employees of the same tenant, ids from other tenants are indistinguishable from missing (404/422).
+- Display name and work email live on `employee_profiles` so tenant code never reads the global `users` table.
+- **Design decision:** department-manager and project-manager scope will be derived from `departments.manager_membership_id`, `projects.manager_membership_id` and project membership at document-policy time, instead of scoped role assignments. This avoids a second scoping mechanism; revisit if PRD 7.5 "scoped if delegated" needs per-person delegation.
+- **Not yet built:** creating employees (invitations, Sprint 6), document associations (ORG-004, documents sprint), mandatory dimensions per category (ORG-003, taxonomy sprint), dashboard filters (ORG-007, dashboards sprint), a lightweight employee lookup for non-admins (needed by "owner/employee" metadata fields).
+
+## 5. Planned
 RBAC roles/permissions, document-level policy (classification, ownership, grants, workflow state, legal hold), admin-privilege audit: Sprint 5 onward.

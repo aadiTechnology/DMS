@@ -1,15 +1,16 @@
-import uuid
 from types import SimpleNamespace
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, ProgrammingError
 
-from app.core.tenancy import Principal, get_principal
+from app.db.models import TenantMembership
+from app.db.repository import TenantRepository
 from app.db.tenant_session import tenant_session
-from app.main import app
-from app.repositories.memberships import MembershipRepository
+
+
+class MembershipRepository(TenantRepository[TenantMembership]):
+    model = TenantMembership
 
 
 @pytest.fixture
@@ -152,39 +153,3 @@ def test_rls_forced_and_enabled(world):
             )
         ).all()
     assert len(rows) == 2 and all(r.relrowsecurity and r.relforcerowsecurity for r in rows)
-
-
-# ---- HTTP layer -------------------------------------------------------------------------
-
-
-@pytest.fixture
-def client(world, monkeypatch):
-    monkeypatch.setattr("app.db.tenant_session.get_engine", lambda: world.engine)
-    yield TestClient(app)
-    app.dependency_overrides.clear()
-
-
-def test_endpoint_denies_unauthenticated(client):
-    assert client.get("/api/v1/memberships").status_code == 401
-
-
-def test_endpoint_returns_only_callers_tenant(client, world):
-    app.dependency_overrides[get_principal] = lambda: Principal(uuid.uuid4(), world.a)
-    r = client.get("/api/v1/memberships")
-    assert r.status_code == 200
-    assert {m["id"] for m in r.json()} == {str(i) for i in world.a_members}
-
-
-def test_endpoint_ignores_client_supplied_tenant(client, world):
-    app.dependency_overrides[get_principal] = lambda: Principal(uuid.uuid4(), world.b)
-    r = client.get(
-        "/api/v1/memberships",
-        params={"tenant_id": str(world.a)},
-        headers={"X-Tenant-Id": str(world.a)},
-    )
-    assert {m["id"] for m in r.json()} == {str(i) for i in world.b_members}
-
-
-def test_endpoint_validates_pagination(client, world):
-    app.dependency_overrides[get_principal] = lambda: Principal(uuid.uuid4(), world.a)
-    assert client.get("/api/v1/memberships", params={"limit": 1000}).status_code == 422

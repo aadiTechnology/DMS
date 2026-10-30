@@ -1,9 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -205,3 +206,143 @@ class AuditEvent(Base):
     outcome: Mapped[str] = mapped_column(String(20), nullable=False, server_default="success")
     privileged: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     details: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+
+
+def _tenant_fk() -> Mapped[uuid.UUID]:
+    return mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=False
+    )
+
+
+def _membership_fk(nullable: bool = True, fk_name: str | None = None) -> Mapped[uuid.UUID | None]:
+    return mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tenant_memberships.id", ondelete="RESTRICT", name=fk_name),
+        nullable=nullable,
+    )
+
+
+_ORG_STATUS = "status IN ('active','inactive')"
+
+
+class Department(Base):
+    """Deactivated, never deleted, so historical document references stay valid (ORG-008)."""
+
+    __tablename__ = "departments"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "code"),
+        UniqueConstraint("tenant_id", "name"),
+        CheckConstraint(_ORG_STATUS, name="status"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    code: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("departments.id", ondelete="RESTRICT"), nullable=True
+    )
+    manager_membership_id: Mapped[uuid.UUID | None] = _membership_fk()
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class Branch(Base):
+    __tablename__ = "branches"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "code"),
+        UniqueConstraint("tenant_id", "name"),
+        CheckConstraint(_ORG_STATUS, name="status"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    code: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class Project(Base):
+    __tablename__ = "projects"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "code"),
+        UniqueConstraint("tenant_id", "name"),
+        CheckConstraint(_ORG_STATUS, name="status"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    code: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
+    manager_membership_id: Mapped[uuid.UUID | None] = _membership_fk()
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class Designation(Base):
+    __tablename__ = "designations"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "name"),
+        CheckConstraint(_ORG_STATUS, name="status"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class EmployeeProfile(Base):
+    """Organizational attributes of a membership. Display name and work email live here (tenant
+    data) so tenant code never needs to read the global users table."""
+
+    __tablename__ = "employee_profiles"
+    __table_args__ = (
+        UniqueConstraint("membership_id"),
+        CheckConstraint(
+            "employment_status IN ('active','on_leave','exited')", name="employment_status"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    membership_id: Mapped[uuid.UUID] = _membership_fk(nullable=False)
+    full_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    work_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    department_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("departments.id", ondelete="RESTRICT"), nullable=True
+    )
+    branch_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("branches.id", ondelete="RESTRICT"), nullable=True
+    )
+    designation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("designations.id", ondelete="RESTRICT"), nullable=True
+    )
+    reporting_manager_membership_id: Mapped[uuid.UUID | None] = _membership_fk(
+        fk_name="fk_employee_profiles_reporting_manager"
+    )
+    employment_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="active"
+    )
+    updated_at: Mapped[datetime] = created_at_col()
+
+
+class ProjectMembership(Base):
+    """Many-to-many (ORG-006). Removal sets ends_on, keeping history."""
+
+    __tablename__ = "project_memberships"
+    __table_args__ = (UniqueConstraint("project_id", "membership_id"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="RESTRICT"), nullable=False
+    )
+    membership_id: Mapped[uuid.UUID] = _membership_fk(nullable=False)
+    project_role: Mapped[str] = mapped_column(String(60), nullable=False, server_default="member")
+    starts_on: Mapped[date] = mapped_column(
+        Date, nullable=False, server_default=func.current_date()
+    )
+    ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)

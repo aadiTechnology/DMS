@@ -62,13 +62,6 @@ def test_login_and_me(env):
     assert me.json() == {"user_id": str(env.alice), "tenant_id": str(env.t1)}
 
 
-def test_end_to_end_tenant_scoped_endpoint(env):
-    tokens = login(env).json()
-    r = env.client.get("/api/v1/memberships", headers=bearer(tokens))
-    assert r.status_code == 200
-    assert len(r.json()) == 2  # alice + bob in Alpha; nothing from Beta
-
-
 def test_wrong_password_and_unknown_user_look_identical(env):
     wrong = login(env, password="nope-nope-nope")
     unknown = login(env, email="ghost@x.test")
@@ -215,7 +208,7 @@ def test_deactivating_membership_invalidates_live_tokens_immediately(env):
             {"i": env.mem_alice},
         )
     assert env.client.get("/api/v1/auth/me", headers=bearer(tokens)).status_code == 401
-    assert env.client.get("/api/v1/memberships", headers=bearer(tokens)).status_code == 401
+    assert env.client.get("/api/v1/org/departments", headers=bearer(tokens)).status_code == 401
     r = env.client.post("/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert r.status_code == 401
 
