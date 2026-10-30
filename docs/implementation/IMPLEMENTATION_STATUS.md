@@ -229,3 +229,22 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** 100,000 documents per organization and concurrent users; Postgres FTS ranking quality on real documents; scanned PDFs (no OCR by design); a real worker process schedule (extraction currently runs after each upload and via the admin "run" call; a periodic job is a deployment task); CI on GitHub. The full test run now takes about 9.5 minutes (mostly password hashing and database creation per test); speeding it up is planned for the hardening sprint.
 
 **Next recommended:** Sprint 14, document versions and approvals: upload a new version, version history, restore, concurrency checks, approval workflow (reviewers, queue, approve/reject with reasons, resubmission) and notifications hooks.
+
+## Sprint 14: Versions, restore and metadata edits (done; approvals follow in Sprint 15)
+**Why split:** versions and the approval workflow together exceeded the sprint limits. This sprint builds the version mechanics and the *gate* (unreviewed versions are never served); Sprint 15 adds the people and decisions.
+
+**Changed:** migration `0012` (`document_versions.review_status`, `restored_from_version`, backfill of already-submitted versions, DELETE grant on `document_tags`), `app/services/versions.py`, `app/api/versions.py`, version-aware rules in `access.py` (`can_modify`, `decide_version`, `require_version`, `visible_versions`), `copy()` in the storage interface with local and Backblaze implementations (server-side, verified, never overwrites), generalized `finalize_available` (first publication versus later versions), metadata-only reindex, `row_version` and `review_status` in the document API.
+
+**Decision (simple terms):** a document can have many versions. Adding one requires saying which version you were looking at, so two people can never silently overwrite each other (the second gets a clear "someone added a newer version" message). Old versions stay downloadable by the people who may see the document today, and restoring one makes a fresh copy that becomes the newest version, so nothing is rewritten. In categories that need approval a new version is kept out of sight of everyone but its uploader, the owner and administrators until it is approved (next sprint). Titles, extra fields and tags can be edited with the same overwrite protection; the search index updates immediately.
+
+**Requirements touched:** PRD 8.3 (immutable versions, version details, download historical versions, restore as new current version, optimistic concurrency), CAT-004 (edits validated under the document's own schema version), 17.1 (optimistic concurrency, idempotency for version reservations), 7.4 (historical access never bypasses current authorization), partial WF-005. Not complete: approval decisions (Sprint 15), archive/restore-from-archive lifecycle, editing associations or classification, deleting versions (disposal workflow).
+
+**Decisions to note:** restoring a version needs the `document.upload_version` permission (it creates a version) rather than `document.restore`, which remains for archive restore; only the owner, the uploader (except Highly Confidential non-owners) and privileged administrators may add versions or edit; one upload at a time per document.
+
+**Bugs found by tests and fixed:** `b2sdk` copy rejects an explicit cache-control without full metadata (copies now inherit the source's metadata, which already carries `private, no-store`).
+
+**Tests executed (observed, local Postgres 16):** `uv run pytest -q` 312 passed, 2 skipped (live B2) across one full run (311 passed, 1 test updated for the new approval gate and then re-run green) plus targeted re-runs; `ruff` clean; `npm run build` and `npm test` pass. New: 17 version/edit tests (history and bytes, concurrency, idempotency, validation, rejected uploads hidden, restore, approval gate, who may modify, archived/inactive category, grants revoked reach old versions, metadata/tags/title edits, stale edits, schema-version rule) and 2 storage copy tests.
+
+**Not verified:** Backblaze server-side copy against the real service (simulator only); behavior of very large copies; CI on GitHub.
+
+**Next recommended:** Sprint 15, approval workflow: configurable steps and reviewers, review queue, approve/reject with mandatory reasons and comments, resubmission, reviewers' access to the pending version, release of held versions, and notification hooks.

@@ -181,6 +181,10 @@ def test_unpublished_documents_are_visible_to_their_uploader_only(cast):
         c.execute(
             text("UPDATE documents SET lifecycle_state='approved' WHERE id=:i"), {"i": pending}
         )
+        c.execute(  # the approval workflow does both together; the version gate needs its half
+            text("UPDATE document_versions SET review_status='approved' WHERE document_id=:i"),
+            {"i": pending},
+        )
     assert can(w, p.stranger, pending) == (OK, OK, OK)  # published: now open (internal)
     with w.engine.begin() as c:
         c.execute(

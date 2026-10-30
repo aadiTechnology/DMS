@@ -291,3 +291,20 @@ def test_inline_links_are_opt_in_and_still_nosniff(storage, http):
     assert attachment.headers["content-disposition"].startswith("attachment")
     assert inline.headers["content-disposition"].startswith("inline")
     assert inline.headers["x-content-type-options"] == "nosniff"
+
+
+def test_copy_creates_a_separate_immutable_object(storage):
+    src, dst = key_for(), key_for(version=2, obj=uuid.uuid4())
+    put(storage, src, b"restore me")
+    copied = storage.copy(src, dst)
+    assert copied.size_bytes == 10 and copied.sha1 == hashlib.sha1(b"restore me").hexdigest()
+    assert b"".join(storage.read_stream(dst)) == b"restore me"
+    assert storage.stat(dst).content_type == "application/pdf"  # metadata travels with the copy
+    with pytest.raises(ObjectExists):
+        storage.copy(src, dst)  # never overwrites
+    with pytest.raises(ObjectNotFound):
+        storage.copy(key_for(version=3, obj=uuid.uuid4()), key_for(version=4, obj=uuid.uuid4()))
+    with pytest.raises(k.InvalidKey):
+        storage.copy("../x", dst)
+    storage.delete(src)
+    assert b"".join(storage.read_stream(dst)) == b"restore me"  # independent of the source

@@ -653,6 +653,9 @@ class DocumentVersion(Base):
         CheckConstraint(
             "scan_status IN ('pending','clean','infected','failed')", name="scan_status"
         ),
+        CheckConstraint(
+            "review_status IN ('none','pending','approved','rejected')", name="review_status"
+        ),
         Index(
             "uq_document_versions_idempotency",
             "tenant_id",
@@ -682,6 +685,8 @@ class DocumentVersion(Base):
     scan_status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
     scan_detail: Mapped[str | None] = mapped_column(String(200), nullable=True)
     reject_reason: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    review_status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="none")
+    restored_from_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     comment: Mapped[str | None] = mapped_column(String(300), nullable=True)
     uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False

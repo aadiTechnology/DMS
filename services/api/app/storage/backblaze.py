@@ -212,6 +212,37 @@ class BackblazeStorage:
 
         return self._guard("download link", run)
 
+    def copy(self, src_key: str, dst_key: str, *, src_file_id: str | None = None) -> StoredObject:
+        keys.assert_valid_key(src_key)
+        keys.assert_valid_key(dst_key)
+
+        def run() -> StoredObject:
+            bucket = self._connect()
+            if self._latest(bucket, dst_key) is not None:
+                raise ObjectExists("object already exists")
+            file_id = src_file_id
+            if file_id is None:
+                found = self._latest(bucket, src_key)
+                if found is None:
+                    raise ObjectNotFound("object not found")
+                file_id = found.id_
+            try:
+                source = bucket.get_file_info_by_id(file_id)
+            except FileNotPresent:
+                raise ObjectNotFound("object not found") from None
+            copied = bucket.copy(
+                file_id, dst_key
+            )  # metadata (type, cache-control, hashes) is copied
+            copied_sha1, source_sha1 = _sha1_of(copied), _sha1_of(source)
+            if copied.size != source.size or (
+                copied_sha1 and source_sha1 and copied_sha1 != source_sha1
+            ):
+                self._api.delete_file_version(copied.id_, copied.file_name)
+                raise StorageError("storage integrity check failed; copy discarded")
+            return StoredObject(file_id=copied.id_, size_bytes=copied.size, sha1=copied_sha1)
+
+        return self._guard("copy", run)
+
     def delete(self, key: str) -> bool:
         keys.assert_valid_key(key)
 

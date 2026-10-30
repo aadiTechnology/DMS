@@ -16,7 +16,6 @@ from fastapi import (
 )
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.requests import ClientDisconnect
 
@@ -104,6 +103,10 @@ class VersionOut(BaseModel):
     sha256: str | None
     scan_status: str
     reject_reason: str | None
+    review_status: str
+    restored_from_version: int | None
+    comment: str | None
+    uploaded_by_user_id: uuid.UUID
     created_at: datetime
 
 
@@ -120,6 +123,7 @@ class DocumentOut(BaseModel):
     associations: dict[str, list[uuid.UUID]]
     tag_ids: list[uuid.UUID]
     versions: list[VersionOut]
+    row_version: int
     created_at: datetime
 
 
@@ -316,7 +320,8 @@ def _document_out(document, versions, assoc, tag_ids) -> DocumentOut:
         owner_membership_id=document.owner_membership_id,
         current_version_number=document.current_version_number,
         metadata=document.metadata_values, associations=grouped, tag_ids=tag_ids,
-        versions=[VersionOut.model_validate(v) for v in versions], created_at=document.created_at,
+        versions=[VersionOut.model_validate(v) for v in versions], row_version=document.row_version,
+        created_at=document.created_at,
     )  # fmt: skip
 
 
@@ -376,6 +381,22 @@ def _authorize(principal: Principal, db: Session, document_id, action: str, perm
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="document not found") from None
 
 
+def _authorize_version(principal: Principal, db: Session, document_id, number: int, action: str):
+    """Like `_authorize`, for one specific version (unpublished versions are not readable)."""
+    try:
+        return access.require_version(
+            db, principal.tenant_id, principal.user_id, document_id, number, action
+        )
+    except access.Denied as denied:
+        with tenant_session(principal.tenant_id) as audit_db:
+            access.record_denied(
+                audit_db, principal.tenant_id, principal.user_id, document_id, action, denied.reason
+            )
+        if denied.reason == "role_lacks_permission":
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Permission denied") from None
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="document not found") from None
+
+
 @router.get("/{document_id}", response_model=DocumentDetail)
 def get_document(
     document_id: uuid.UUID,
@@ -395,21 +416,16 @@ def get_document(
         ).allowed
         for action in ("preview", "download")
     }
-    body = _document_out(*uploads.document_detail(db, document))
+    _, versions, assoc, tag_ids = uploads.document_detail(db, document)
+    versions = access.visible_versions(
+        db, principal.tenant_id, principal.user_id, document, versions, perms
+    )
+    body = _document_out(document, versions, assoc, tag_ids)
     return DocumentDetail(**body.model_dump(), access=AccessFlags(**flags))
 
 
 def _link(principal, db, document_id, number: int, action: str, response: Response) -> LinkOut:
-    document, decision = _authorize(principal, db, document_id, action)
-    version = db.scalars(
-        select(uploads.DocumentVersion).where(
-            uploads.DocumentVersion.document_id == document.id,
-            uploads.DocumentVersion.version_number == number,
-            uploads.DocumentVersion.status == "available",
-        )
-    ).first()
-    if version is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="version not found")
+    document, version, decision = _authorize_version(principal, db, document_id, number, action)
     inline = action == "preview"
     if inline and version.content_type not in PREVIEWABLE_TYPES:
         raise HTTPException(

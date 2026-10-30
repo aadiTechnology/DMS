@@ -83,8 +83,18 @@ def _flatten(value: Any) -> list[str]:
 _ID_FIELDS = {"employee_lookup", "department_lookup", "branch_lookup", "project_lookup"}
 
 
+def reindex_metadata_only(db: Session, document: Document, filename: str) -> None:
+    """Refresh title/file name/metadata/tags in the index without re-extracting content."""
+    index_metadata(db, document, filename, content_supported=True, reset_extraction=False)
+
+
 def index_metadata(
-    db: Session, document: Document, filename: str, *, content_supported: bool
+    db: Session,
+    document: Document,
+    filename: str,
+    *,
+    content_supported: bool,
+    reset_extraction: bool = True,
 ) -> None:
     """(Re)build the metadata vector. Called when a version becomes available and whenever
     title, metadata or tags change. Marks content extraction `pending` for a new version."""
@@ -117,7 +127,7 @@ def index_metadata(
         {
             "d": document.id, "t": document.tenant_id, "title": document.title, "fname": filename,
             "extra": " ".join(extra), "status": "pending" if content_supported else "unsupported",
-            "reset": True,
+            "reset": reset_extraction,
         },
     )  # fmt: skip
 

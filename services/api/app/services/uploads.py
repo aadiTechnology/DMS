@@ -39,6 +39,7 @@ from app.db.models import (
     TenantMembership,
 )
 from app.services import audit, extraction, search, taxonomy
+from app.services.access import PUBLISHED
 from app.services.filetypes import FileRejected, check_declared_type, check_extension
 from app.services.metadata import validate_values
 from app.services.org import Conflict, Invalid, NotFound
@@ -313,14 +314,20 @@ def finalize_available(
     version.content_type, version.size_bytes = content_type, size_bytes
     version.sha1, version.sha256, version.storage_file_id = sha1, sha256, storage_file_id
     version.finalized_at = _now()
-    document.current_version_number = version.version_number
-    document.lifecycle_state = "submitted" if approval_required else "approved"
+    version.review_status = "pending" if approval_required else "none"
+    if document.lifecycle_state not in PUBLISHED:  # first publication of this document
+        document.lifecycle_state = "submitted" if approval_required else "approved"
+        document.current_version_number = version.version_number
+    elif not approval_required:  # a later version replaces the served one at once
+        document.current_version_number = version.version_number
+    # else: a later version in an approval category waits; readers keep the approved one
     document.row_version += 1
     document.updated_at = _now()
-    search.index_metadata(
-        db, document, version.original_filename,
-        content_supported=search.extraction_ext(version.original_filename) in extraction.SUPPORTED,
-    )  # fmt: skip
+    if document.current_version_number == version.version_number:
+        search.index_metadata(
+            db, document, version.original_filename,
+            content_supported=search.extraction_ext(version.original_filename) in extraction.SUPPORTED,
+        )  # fmt: skip
     audit.record(
         db, tenant_id=tenant_id, actor_user_id=actor_id, action="document.uploaded",
         resource_type="document", resource_id=document.id,

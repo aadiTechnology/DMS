@@ -282,3 +282,19 @@ def test_inline_download_url_uses_inline_disposition(b2):
         urlparse(b2.create_download_url(key, ttl_seconds=60, filename="a.pdf", inline=True)).query
     )
     assert query["b2ContentDisposition"][0].startswith("inline; filename*=UTF-8''")
+
+
+def test_copy_makes_an_independent_verified_object(b2):
+    src, dst = key_for(), key_for("copy.pdf", version=2)
+    stored = put(b2, src, b"restore me please")
+    copied = b2.copy(src, dst, src_file_id=stored.file_id)
+    assert copied.file_id != stored.file_id and copied.size_bytes == 17
+    assert copied.sha1 == hashlib.sha1(b"restore me please").hexdigest()
+    assert b"".join(b2.read_stream(dst)) == b"restore me please"
+    assert b2.stat(dst).content_type == "application/pdf"
+    with pytest.raises(ObjectExists):
+        b2.copy(src, dst)
+    with pytest.raises(ObjectNotFound):
+        b2.copy(key_for("missing.pdf", version=3), key_for("nowhere.pdf", version=4))
+    b2.delete(src)
+    assert b"".join(b2.read_stream(dst)) == b"restore me please"

@@ -88,6 +88,11 @@ class StorageProvider(Protocol):
         verified are safe to render (PDF, PNG, JPEG); everything else is a forced download."""
         ...
 
+    def copy(self, src_key: str, dst_key: str, *, src_file_id: str | None = None) -> StoredObject:
+        """Server-side copy to a NEW key (restoring an old version creates a new immutable
+        object; bytes are never mutated or shared). Raises ObjectExists/ObjectNotFound."""
+        ...
+
     def delete(self, key: str) -> bool:
         """Remove every stored version of an object (only after lifecycle approval).
         True if something was removed. Failures raise."""

@@ -258,3 +258,102 @@ def record_denied(db: Session, tenant_id, user_id, document_id, action: str, rea
         resource_type="document", resource_id=document_id, outcome="denied",
         details={"access": action, "reason": reason},
     )  # fmt: skip
+
+
+# ---- versions and modification (Sprint 14) ----------------------------------------------
+
+
+def _membership(db: Session, tenant_id, user_id) -> TenantMembership | None:
+    return db.scalars(
+        select(TenantMembership).where(
+            TenantMembership.tenant_id == tenant_id,
+            TenantMembership.user_id == user_id,
+            TenantMembership.status == "active",
+        )
+    ).first()
+
+
+def can_modify(
+    db: Session, tenant_id, user_id, document: Document, permissions: set[str]
+) -> Decision:
+    """May this person add versions, restore, or edit metadata? Owner; the uploader (not for
+    Highly Confidential documents they do not own); or the audited administrator privilege.
+    The caller separately checks the role permission (upload_version, restore, edit_metadata)."""
+    membership = _membership(db, tenant_id, user_id)
+    if membership is None or document.tenant_id != tenant_id:
+        return _deny("not_a_member")
+    if document.owner_membership_id == membership.id:
+        return Decision(True, "owner")
+    if document.created_by_user_id == user_id and document.classification != "highly_confidential":
+        return Decision(True, "uploader")
+    if PRIVILEGE in permissions:
+        return Decision(True, "administrator_privilege", True)
+    return _deny("not_authorized")
+
+
+def decide_version(
+    db: Session,
+    tenant_id,
+    user_id,
+    document: Document,
+    version,
+    action: str,
+    permissions: set[str] | None = None,
+) -> Decision:
+    """Access to one specific version. Published versions follow the document rules. A version
+    that is not published (still uploading, awaiting approval, rejected, quarantined,
+    abandoned) is visible only to its uploader, the document owner, and administrators with the
+    audited privilege. An old version never bypasses today's authorization."""
+    perms = (
+        permissions
+        if permissions is not None
+        else rbac.effective_permissions(db, tenant_id, user_id)
+    )
+    if ACTION_PERMISSION[action] not in perms:
+        return _deny("role_lacks_permission")
+    published = version.status == "available" and version.review_status in ("none", "approved")
+    if published:
+        return decide(db, tenant_id, user_id, document, action, perms)
+    if action != "view_metadata" and version.status != "available":
+        return _deny("version_unavailable")
+    membership = _membership(db, tenant_id, user_id)
+    if membership is None or document.tenant_id != tenant_id:
+        return _deny("not_a_member")
+    if document.owner_membership_id == membership.id:
+        return Decision(True, "owner")
+    if version.uploaded_by_user_id == user_id:
+        return Decision(True, "uploader")
+    if PRIVILEGE in perms:
+        return Decision(True, "administrator_privilege", True)
+    return _deny("version_not_published")
+
+
+def require_version(
+    db: Session, tenant_id, user_id, document_id, number: int, action: str,
+    permissions: set[str] | None = None,
+):  # fmt: skip
+    """Load document + version and authorize `action` on that version (`Denied` otherwise)."""
+    from app.db.models import DocumentVersion
+
+    document = db.get(Document, document_id)
+    if document is None or document.tenant_id != tenant_id:
+        raise Denied("missing")
+    version = db.scalars(
+        select(DocumentVersion).where(
+            DocumentVersion.document_id == document.id, DocumentVersion.version_number == number
+        )
+    ).first()
+    if version is None:
+        raise Denied("missing")
+    decision = decide_version(db, tenant_id, user_id, document, version, action, permissions)
+    if not decision.allowed:
+        raise Denied(decision.reason)
+    return document, version, decision
+
+
+def visible_versions(db: Session, tenant_id, user_id, document: Document, versions, permissions):
+    return [
+        v
+        for v in versions
+        if decide_version(db, tenant_id, user_id, document, v, "view_metadata", permissions).allowed
+    ]

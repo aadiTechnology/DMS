@@ -121,6 +121,23 @@ class LocalStorage:
         }
         return self._url(payload)
 
+    def copy(self, src_key: str, dst_key: str, *, src_file_id: str | None = None) -> StoredObject:
+        source = self._path(src_key)
+        if not source.is_file():
+            raise ObjectNotFound("object not found")
+        size = source.stat().st_size
+        content_type = self._content_type(source) or "application/octet-stream"
+        writer = self.begin_write(dst_key, content_type=content_type, expected_size=size)
+        digest = hashlib.sha1(usedforsecurity=False)
+        try:
+            for chunk in self.read_stream(src_key):
+                digest.update(chunk)
+                writer.write(chunk)
+            writer.commit()
+        finally:
+            writer.close()
+        return StoredObject(file_id=None, size_bytes=size, sha1=digest.hexdigest())
+
     def stat(self, key: str) -> ObjectInfo | None:
         path = self._path(key)
         if not path.is_file():

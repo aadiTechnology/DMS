@@ -97,5 +97,14 @@ Evaluation order:
 - **Languages:** PostgreSQL `simple` configuration: Hindi, Marathi and English words are indexed whole and found by prefix; there is no stemming (searching "report" does not match "reports").
 - **Measured (30,000 documents in one organization, local Postgres, one client, synthetic data):** employee list with facets p50 349 ms, max 765 ms; title/prefix/content searches p50 133-300 ms; administrator list p50 115 ms. PRD targets are 2-3 s p95 at 100,000 documents per organization; 100,000 and concurrent load are not yet measured.
 
-## 9. Planned
+## 9. Versions and edits (Sprint 14, implemented and tested)
+
+- **Who may change a document** (`access.can_modify`, on top of the role permission `document.upload_version` / `document.edit_metadata`): the owner; the uploader, except for a Highly Confidential document they do not own; or an administrator with `document.access_all` (flagged privileged and audited). Everyone else gets "not found" and a `document.access_denied` entry.
+- **Version-level access** (`access.decide_version`): a published version (available and not awaiting approval) follows the document rules; any other version (uploading, awaiting approval, rejected, quarantined, abandoned) is visible only to its uploader, the owner, and privileged administrators. A historical version is judged by **today's** authorization: revoking a share removes access to every version at once.
+- **No silent overwrite:** adding or restoring a version requires `based_on_version`; editing requires `row_version`. A mismatch is a 409 that carries the current number, and nothing is changed. Only one upload may be in progress per document, and only one version may await approval at a time.
+- **Approval gate (rules in place, decisions arrive next sprint):** in a category that needs approval a later version is stored but not served (`review_status = pending`); readers keep the last approved version and the search index keeps pointing at it. The first version of such a document stays unpublished as before. Until the approval workflow ships there is no way to approve, which is intentional (fail closed).
+- **Restore** copies the bytes server-side into a new object (Backblaze `copy`, verified size and SHA-1, never overwrites) and records `restored_from_version`; the old object is not shared and can be retired independently later.
+- **Tag links** can now be removed (the one new DELETE grant, on `document_tags`); the change is recorded in the audit event, which lists the names of changed fields, not values.
+
+## 10. Planned
 RBAC roles/permissions, document-level policy (classification, ownership, grants, workflow state, legal hold), admin-privilege audit: Sprint 5 onward.
