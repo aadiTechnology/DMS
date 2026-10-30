@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,6 +23,16 @@ class Settings(BaseSettings):
     LOGIN_MAX_FAILURES: int = Field(default=5, ge=3, le=20)
     LOGIN_LOCKOUT_MINUTES: int = Field(default=15, ge=1, le=1440)
     AUTH_RATE_LIMIT_PER_MINUTE: int = Field(default=30, ge=1)
+    INVITE_TTL_HOURS: int = Field(default=168, ge=1, le=720)
+    RESET_TTL_MINUTES: int = Field(default=60, ge=5, le=1440)
+    # Email. `console` (development only) logs messages; `smtp` works with any provider.
+    APP_BASE_URL: str = "http://localhost:5173"
+    EMAIL_BACKEND: Literal["console", "outbox", "smtp"] = "console"
+    EMAIL_FROM: str = "no-reply@dms.local"
+    EMAIL_SMTP_HOST: str = ""
+    EMAIL_SMTP_PORT: int = 587
+    EMAIL_SMTP_USER: str = ""
+    EMAIL_SMTP_PASSWORD: str = ""
 
     @model_validator(mode="after")
     def _production_needs_real_secret(self):
@@ -29,6 +40,8 @@ class Settings(BaseSettings):
             self.SECRET_KEY == DEV_SECRET or len(self.SECRET_KEY) < 32
         ):
             raise ValueError("SECRET_KEY must be set to a unique value of 32+ characters")
+        if self.ENVIRONMENT == "production" and self.EMAIL_BACKEND != "smtp":
+            raise ValueError("EMAIL_BACKEND must be 'smtp' in production")
         return self
 
 

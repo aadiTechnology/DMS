@@ -1,3 +1,4 @@
+import re
 import uuid
 
 from sqlalchemy import text
@@ -8,7 +9,14 @@ from app.db.rls import TENANT_SETTING
 from app.services import audit, rbac
 
 
-def provision_tenant(db: Session, name: str, admin_user_id: uuid.UUID) -> uuid.UUID:
+def slugify(name: str) -> str:
+    base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:50] or "org"
+    return base
+
+
+def provision_tenant(
+    db: Session, name: str, admin_user_id: uuid.UUID, slug: str | None = None
+) -> uuid.UUID:
     """Platform operation: create a tenant, its default roles, and its first administrator.
 
     Runs on the owner connection. The tenant id is generated first and set as the transaction's
@@ -17,7 +25,11 @@ def provision_tenant(db: Session, name: str, admin_user_id: uuid.UUID) -> uuid.U
     """
     tenant_id = uuid.uuid4()
     db.execute(text("SELECT set_config(:n, :v, true)"), {"n": TENANT_SETTING, "v": str(tenant_id)})
-    db.add(Tenant(id=tenant_id, name=name))
+    slug = slug or slugify(name)
+    taken = db.execute(text("SELECT 1 FROM tenants WHERE slug = :s"), {"s": slug}).first()
+    if taken:
+        slug = f"{slug}-{tenant_id.hex[:6]}"
+    db.add(Tenant(id=tenant_id, name=name, slug=slug))
     db.flush()
     membership = TenantMembership(tenant_id=tenant_id, user_id=admin_user_id, status="active")
     db.add(membership)

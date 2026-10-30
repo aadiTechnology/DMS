@@ -1,3 +1,4 @@
+import logging
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -34,3 +35,41 @@ def auth_session(engine=None) -> Iterator[Session]:
     with factory() as session, session.begin():
         session.execute(text(f"SET LOCAL ROLE {AUTH_ROLE}"))
         yield session
+
+
+_SWITCHABLE = {APP_ROLE, AUTH_ROLE}
+
+
+@contextmanager
+def acting_as(db: Session, role: str, tenant_id: uuid.UUID | None = None) -> Iterator[None]:
+    """Temporarily run part of the current transaction as another application role.
+
+    Used by onboarding, which must touch global tables (authentication role) and tenant tables
+    (tenant role) atomically. SET ROLE is checked against the connection's login user, so
+    switching between the two application roles is permitted. Only dms_app/dms_auth are allowed.
+    """
+    if role not in _SWITCHABLE:
+        raise ValueError("unsupported role")
+    previous_role = db.execute(text("SELECT current_user")).scalar()
+    previous_tenant = db.execute(
+        text("SELECT current_setting(:n, true)"), {"n": TENANT_SETTING}
+    ).scalar()
+    db.flush()  # pending rows must be written under the role that owns them
+    db.execute(text(f"SET LOCAL ROLE {role}"))
+    if tenant_id is not None:
+        db.execute(
+            text("SELECT set_config(:n, :v, true)"), {"n": TENANT_SETTING, "v": str(tenant_id)}
+        )
+    try:
+        yield
+        db.flush()
+    finally:
+        try:
+            db.execute(
+                text("SELECT set_config(:n, :v, true)"),
+                {"n": TENANT_SETTING, "v": previous_tenant or ""},
+            )
+            db.execute(text(f'SET LOCAL ROLE "{previous_role}"'))
+        except Exception:
+            # Transaction already aborted; the original error is the one worth reporting.
+            logging.getLogger("dms.db").debug("role restore skipped", exc_info=True)

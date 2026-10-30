@@ -66,3 +66,16 @@ def decode_access_token(settings: Settings, token: str) -> dict:
         algorithms=[_ALGORITHM],
         options={"require": ["exp", "sub", "tid", "sid"]},
     )
+
+
+def validate_password(password: str, email: str = "") -> None:
+    """Raises ValueError with a user-safe message when the password is not acceptable."""
+    if not MIN_PASSWORD_LENGTH <= len(password) <= MAX_PASSWORD_LENGTH:
+        raise ValueError(
+            f"Password must be {MIN_PASSWORD_LENGTH} to {MAX_PASSWORD_LENGTH} characters"
+        )
+    local = email.split("@")[0].lower()
+    if local and len(local) >= 4 and local in password.lower():
+        raise ValueError("Password must not contain your email name")
+    if len(set(password)) < 4:
+        raise ValueError("Password is too repetitive")

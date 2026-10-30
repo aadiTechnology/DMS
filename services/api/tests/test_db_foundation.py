@@ -20,6 +20,8 @@ TABLES = {
     "designations",
     "employee_profiles",
     "project_memberships",
+    "auth_tokens",
+    "registration_requests",
 }
 
 

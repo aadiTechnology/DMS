@@ -101,3 +101,18 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** CI on GitHub; performance of directory listing at 500 employees (not measured); non-superuser owner role.
 
 **Next recommended:** Sprint 6, authentication II and onboarding (employee invitations that create memberships and profiles, self-registration requests with admin approval, password set/reset via email token, Google/Microsoft SSO, optional MFA). Needs decisions already recorded as open: D9 email provider and D12 account-linking; I will build email behind an interface with a development console sender and propose provider/linking defaults.
+
+## Sprint 6: Onboarding and recovery (done) — SSO and MFA split into Sprint 7
+**Why split:** Google/Microsoft sign-in cannot be verified without real provider credentials, and the combined scope exceeded the sprint limits.
+
+**Changed:** migration `0006` (tenant `slug` + `self_registration_enabled`, `auth_tokens`, `registration_requests`), `app/services/{email,onboarding}.py`, `app/api/onboarding.py`, public routes in `app/api/auth.py` (`accept-invite`, `forgot-password`, `reset-password`, `register`), `acting_as` role switching, email-after-commit in `get_tenant_db`, password policy, tenant slug at provisioning, EMAIL_* settings.
+
+**Decision (simple terms):** people join by an emailed one-time link or by asking to join (admin approves); forgotten passwords are reset by a one-time emailed link that also signs the person out everywhere. The system never reveals whether an email or organization exists.
+
+**Requirements touched:** invitations and self-registration with admin approval (PRD App.A #13), password reset (PRD 15.1, 17), WF-006-style no-duplicate delivery partly (retry/history pending). Not complete: SSO, MFA.
+
+**Tests executed (observed, local Postgres 16):** `uv run pytest -q` 88 passed (14 new onboarding tests incl. email-after-commit proof, password never overwritten, tenant isolation, uniform public answers, single-use and expiry); `ruff` clean.
+
+**Not verified:** SMTP delivery against a real server (only message construction tested); production database roles; CI on GitHub. Reminder: the dev `console` backend logs links, so use it only on a developer machine.
+
+**Next recommended:** Sprint 7: Google/Microsoft sign-in (OIDC verification built against recorded test tokens, account-linking default: link only when the provider reports a verified email matching an existing active account) and optional TOTP MFA. Real provider app registrations will be needed from you before it can be used live.

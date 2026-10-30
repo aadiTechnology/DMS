@@ -22,5 +22,12 @@ Status codes: 401 not signed in / session revoked, 403 signed in but lacking the
 | PUT `/employees/{membership_id}/profile` | admin.manage_organization | Create/update profile (only sent fields change; `full_name` required first time) |
 | GET `/projects/{id}/members` | admin.manage_organization | Current project members |
 | PUT/DELETE `/projects/{id}/members/{membership_id}` | admin.manage_organization | Add/update member (re-adding clears end date); DELETE ends today, history kept |
+| POST `/auth/accept-invite` | none (single-use token) | Set password (new accounts only) and activate the membership; returns tokens. Invalid/expired/used/revoked links all answer 400 |
+| POST `/auth/forgot-password` | none | Always 202 with the same text; emails a link only for an active account (1 per minute per account) |
+| POST `/auth/reset-password` | none (single-use token) | New password; clears lockout; signs the person out everywhere |
+| POST `/auth/register` | none | Request to join an organization (`tenant_slug`, email, full_name). Always 202 with the same text |
+| POST `/invitations`, GET `/invitations`, POST `/invitations/{membership_id}/resend`, DELETE `/invitations/{membership_id}` | admin.manage_users | Invite by email (optional `role_id`, default employee), list pending, resend (older links stop working), revoke |
+| GET `/registration-requests?status=`, POST `/registration-requests/{id}/approve` or `/reject` | admin.manage_users | Review self-registration; approve sends an invitation |
+| GET/PATCH `/tenant/settings` | admin.manage_organization | Organization slug (read) and `self_registration_enabled` (default off) |
 
 Planned groups follow the PRD section 17 list as each sprint ships.

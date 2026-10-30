@@ -2,11 +2,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
-from app.api import audit, auth, org, rbac
+from app.api import audit, auth, onboarding, org, rbac
 
 app = FastAPI(title="DMS API", version="0.0.0", openapi_url="/api/v1/openapi.json")
 app.include_router(auth.router)
 app.include_router(org.router)
+app.include_router(onboarding.router)
 app.include_router(rbac.router)
 app.include_router(audit.router)
 

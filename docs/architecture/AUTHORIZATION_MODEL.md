@@ -47,5 +47,14 @@ Three independent layers, so one mistake cannot expose another customer's data:
 - **Design decision:** department-manager and project-manager scope will be derived from `departments.manager_membership_id`, `projects.manager_membership_id` and project membership at document-policy time, instead of scoped role assignments. This avoids a second scoping mechanism; revisit if PRD 7.5 "scoped if delegated" needs per-person delegation.
 - **Not yet built:** creating employees (invitations, Sprint 6), document associations (ORG-004, documents sprint), mandatory dimensions per category (ORG-003, taxonomy sprint), dashboard filters (ORG-007, dashboards sprint), a lightweight employee lookup for non-admins (needed by "owner/employee" metadata fields).
 
-## 5. Planned
+## 5. Onboarding and recovery (Sprint 6, implemented and tested)
+
+- **Invitations.** An admin with `admin.manage_users` invites by email. The person's account, pending membership, profile, initial role and a single-use link (valid 7 days) are created in one transaction. Only a hash of the link token is stored. The link activates the membership; a **new** account sets its password there, an **existing** account (already in another organization) keeps its password, so an emailed link can never replace credentials.
+- **Password reset.** Always answers the same; emails only real active accounts, at most one per minute per account. Using it sets the new password, clears lockout, ends all sessions, and is audited per organization. Passwords: 10-128 characters, no repetitive strings, must not contain the email name.
+- **Self-registration.** Off by default per organization. When on, a public request (by organization slug) waits for admin approval; approval sends an invitation, rejection sends nothing. Public endpoints reveal nothing about which organizations or accounts exist.
+- **Email.** Replaceable sender (`smtp` for any provider, `console` for development only, `outbox` for tests). Production refuses to start without `smtp`. Emails are queued during the request and sent only after the database commit (an automated test proves this ordering and caught a real flaw in the first design). Delivery is in-process, English only, no retry yet: retries, delivery history and localized templates arrive with the notifications and localization sprints.
+- **Database roles.** Onboarding runs atomically by switching between `dms_auth` and `dms_app` inside one transaction (`acting_as`). `dms_auth` gained INSERT on `users` and access to `auth_tokens`; `dms_app` still cannot read either.
+- **Not yet built:** Google/Microsoft sign-in, optional MFA, email verification beyond the invitation link, account-linking rules (Sprint 7); abuse controls beyond rate limits (captcha) for public registration.
+
+## 6. Planned
 RBAC roles/permissions, document-level policy (classification, ownership, grants, workflow state, legal hold), admin-privilege audit: Sprint 5 onward.

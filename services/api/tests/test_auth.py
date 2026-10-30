@@ -246,5 +246,7 @@ def test_production_rejects_default_or_short_secret():
         Settings(_env_file=None, ENVIRONMENT="production")
     with pytest.raises(ValueError):
         Settings(_env_file=None, ENVIRONMENT="production", SECRET_KEY="short")
-    assert Settings(_env_file=None, ENVIRONMENT="production", SECRET_KEY="x" * 40)
+    assert Settings(
+        _env_file=None, ENVIRONMENT="production", SECRET_KEY="x" * 40, EMAIL_BACKEND="smtp"
+    )
     assert DEV_SECRET  # development default exists only for local use

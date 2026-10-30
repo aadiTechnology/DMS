@@ -39,7 +39,7 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def _issue(db: Session, settings: Settings, user_id, tenant_id) -> TokenPair:
+def issue_session(db: Session, settings: Settings, user_id, tenant_id) -> TokenPair:
     refresh = new_refresh_token()
     row = UserSession(
         user_id=user_id,
@@ -98,7 +98,7 @@ def login(
     user.failed_login_count = 0
     user.locked_until = None
     user.last_login_at = now
-    tokens = _issue(db, settings, user.id, tenant_id)
+    tokens = issue_session(db, settings, user.id, tenant_id)
     audit.record(
         db, tenant_id=tenant_id, actor_user_id=user.id, action="auth.login", resource_type="session"
     )

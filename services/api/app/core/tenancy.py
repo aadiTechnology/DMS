@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.security import decode_access_token
 from app.db.tenant_session import auth_session, tenant_session
 from app.services import audit
+from app.services import email as email_service
 from app.services.auth import is_session_usable
 from app.services.rbac import has_permission
 
@@ -57,8 +58,13 @@ def get_principal(
 
 
 def get_tenant_db(principal: Principal = Depends(get_principal)) -> Iterator[Session]:
+    """Request transaction. Handlers may queue emails in `session.info["outbox"]`; they are sent
+    only after the transaction has committed, never for a rolled-back request."""
+    outbox: list = []
     with tenant_session(principal.tenant_id) as session:
+        session.info["outbox"] = outbox
         yield session
+    email_service.send(outbox)
 
 
 def require_permission(code: str):

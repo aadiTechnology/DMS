@@ -37,6 +37,10 @@ class Tenant(Base):
     data_region: Mapped[str] = mapped_column(String(32), nullable=False, server_default="india")
     plan_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = created_at_col()
+    slug: Mapped[str | None] = mapped_column(String(63), nullable=True, unique=True)
+    self_registration_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
 
 
 class User(Base):
@@ -346,3 +350,57 @@ class ProjectMembership(Base):
         Date, nullable=False, server_default=func.current_date()
     )
     ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class AuthToken(Base):
+    """Single-use emailed tokens (invitation, password reset). Only SHA-256 hashes are stored.
+    Readable only by the authentication role."""
+
+    __tablename__ = "auth_tokens"
+    __table_args__ = (
+        UniqueConstraint("token_hash"),
+        CheckConstraint("purpose IN ('invite','password_reset')", name="purpose"),
+        Index("ix_auth_tokens_user_id", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    purpose: Mapped[str] = mapped_column(String(30), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=True
+    )
+    membership_id: Mapped[uuid.UUID | None] = _membership_fk()
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class RegistrationRequest(Base):
+    """Self-registration awaiting admin approval (PRD App.A #13)."""
+
+    __tablename__ = "registration_requests"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending','approved','rejected')", name="status"),
+        Index(
+            "uq_registration_requests_pending_email",
+            "tenant_id",
+            text("lower(email)"),
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    full_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
+    created_at: Mapped[datetime] = created_at_col()
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    decision_note: Mapped[str | None] = mapped_column(String(300), nullable=True)
