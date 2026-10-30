@@ -247,6 +247,13 @@ def test_production_rejects_default_or_short_secret():
     with pytest.raises(ValueError):
         Settings(_env_file=None, ENVIRONMENT="production", SECRET_KEY="short")
     assert Settings(
-        _env_file=None, ENVIRONMENT="production", SECRET_KEY="x" * 40, EMAIL_BACKEND="smtp"
+        _env_file=None,
+        ENVIRONMENT="production",
+        SECRET_KEY="x" * 40,
+        EMAIL_BACKEND="smtp",
+        STORAGE_PROVIDER="backblaze",
+        DMS_B2_KEY_ID="id",
+        DMS_B2_APP_KEY="key",
+        DMS_B2_BUCKET_NAME="dms-prod",
     )
     assert DEV_SECRET  # development default exists only for local use

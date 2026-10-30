@@ -1,10 +1,12 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEV_SECRET = "dev-only-insecure-secret-do-not-use-in-production"
+# Buckets of the existing ERP: the DMS must never share them (ADR-0001).
+FORBIDDEN_BUCKETS = frozenset({"attachmentserp-b2", "aaditech-erp-test-v2"})
 
 
 class Settings(BaseSettings):
@@ -38,6 +40,13 @@ class Settings(BaseSettings):
     SSO_MICROSOFT_CLIENT_ID: str = ""
     # Encrypts TOTP secrets at rest. Falls back to a key derived from SECRET_KEY.
     MFA_ENCRYPTION_KEY: str = ""
+    # Object storage (ADR-0001). `local` is for development/tests only.
+    STORAGE_PROVIDER: Literal["local", "backblaze"] = "local"
+    STORAGE_LOCAL_DIR: str = ".storage"
+    API_BASE_URL: str = "http://localhost:8000"
+    DMS_B2_KEY_ID: str = ""
+    DMS_B2_APP_KEY: SecretStr = SecretStr("")
+    DMS_B2_BUCKET_NAME: str = ""
 
     @model_validator(mode="after")
     def _production_needs_real_secret(self):
@@ -47,6 +56,22 @@ class Settings(BaseSettings):
             raise ValueError("SECRET_KEY must be set to a unique value of 32+ characters")
         if self.ENVIRONMENT == "production" and self.EMAIL_BACKEND != "smtp":
             raise ValueError("EMAIL_BACKEND must be 'smtp' in production")
+        if self.ENVIRONMENT == "production" and self.STORAGE_PROVIDER != "backblaze":
+            raise ValueError("STORAGE_PROVIDER must be 'backblaze' in production")
+        if self.STORAGE_PROVIDER == "backblaze":
+            missing = [
+                name
+                for name, value in (
+                    ("DMS_B2_KEY_ID", self.DMS_B2_KEY_ID),
+                    ("DMS_B2_APP_KEY", self.DMS_B2_APP_KEY.get_secret_value()),
+                    ("DMS_B2_BUCKET_NAME", self.DMS_B2_BUCKET_NAME),
+                )
+                if not value
+            ]
+            if missing:
+                raise ValueError(f"Backblaze storage needs: {', '.join(missing)}")
+            if self.DMS_B2_BUCKET_NAME in FORBIDDEN_BUCKETS:
+                raise ValueError("DMS_B2_BUCKET_NAME must be a DMS-only bucket, not an ERP bucket")
         return self
 
 

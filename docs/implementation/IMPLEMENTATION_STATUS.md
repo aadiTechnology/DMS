@@ -129,3 +129,18 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** live Google/Microsoft tokens and JWKS fetching (tests use locally generated RSA keys and patch the key lookup); behavior with real authenticator apps (RFC vectors only); CI on GitHub. **You must register OAuth apps** before SSO can be used live.
 
 **Next recommended:** Sprint 8, storage abstraction (StorageProvider interface, local dev adapter, object-key scheme from ADR-0001, config validation). Sprint 9 then adds the real Backblaze adapter and needs a DMS-specific private test bucket and key from you (only "configured / not configured" status needed, never the values).
+
+## Sprint 8: Storage abstraction (done)
+**Changed:** `app/storage/{base,keys,local,__init__}.py` (interface, key scheme, local adapter, factory), dev-only `app/api/dev_storage.py`, storage settings with production validation (`config.py`), `docs/deployment/STORAGE_CONFIGURATION.md`, `docs/architecture/BACKBLAZE_STORAGE_ARCHITECTURE.md`. No new dependencies.
+
+**Decision (simple terms):** the rest of the system will talk to "a storage" through one small set of operations, so Backblaze can be plugged in without changing document logic. Files get a fixed, safe address that includes the organization, document and version, and a stored file can never be replaced. In production the system refuses to start unless it is configured for Backblaze with a DMS-only bucket.
+
+**Requirements touched:** STO-002 (private storage, via ADR-0001), STO-003 groundwork, STO-008 (short exact-key links), I18N-003 (Unicode file names). Not complete until Sprints 9-11.
+
+**Tests executed (observed):** `uv run pytest -q` 149 passed (36 new storage tests: key scheme and sanitizing incl. Hindi/Marathi, invalid keys, round trip, immutability, size enforcement, signed-link binding/expiry/tampering, config rules, secret hiding); `ruff` clean. A test found and I fixed a real bug (invalid key inside a signed link caused a 500 instead of a 403).
+
+**Not verified:** anything against Backblaze (no adapter yet); large-file streaming performance; CI on GitHub.
+
+**Needed from you before Sprint 9:** a new private DMS-only B2 bucket + restricted key for dev/test (report only "configured"/"not configured"); see `docs/deployment/STORAGE_CONFIGURATION.md`. Also pending and urgent: rotate the exposed ERP key. If these are not ready I can still build and test the Backblaze adapter against a faked B2 API and leave live verification marked "not verified".
+
+**Next recommended:** Sprint 9 (Backblaze adapter), or, if the bucket is not ready, Sprint 9b: taxonomy (categories, metadata schemas, tags, classifications) which has no storage dependency.
