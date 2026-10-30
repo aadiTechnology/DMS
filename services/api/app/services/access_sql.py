@@ -14,6 +14,8 @@ from sqlalchemy import and_, exists, false, or_, select, true
 from sqlalchemy.orm import Session
 
 from app.db.models import (
+    ApprovalAssignment,
+    ApprovalRequest,
     Department,
     Document,
     DocumentAccessGrant,
@@ -104,7 +106,14 @@ def visible_clause(viewer: Viewer):
         DocumentAccessGrant.can_view.is_(True),
         (DocumentAccessGrant.expires_at.is_(None)) | (DocumentAccessGrant.expires_at > now),
     )
+    reviewing = exists().where(
+        ApprovalRequest.document_id == Document.id,
+        ApprovalRequest.status == "pending",
+        ApprovalAssignment.request_id == ApprovalRequest.id,
+        ApprovalAssignment.membership_id == viewer.membership_id,
+    )
     conditions = [
+        reviewing,
         Document.owner_membership_id == viewer.membership_id,
         Document.created_by_user_id == viewer.user_id,
         and_(published, Document.classification.in_(("public", "internal"))),

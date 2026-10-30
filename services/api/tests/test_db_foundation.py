@@ -34,6 +34,9 @@ TABLES = {
     "document_versions",
     "document_access_grants",
     "document_search",
+    "approval_requests",
+    "approval_assignments",
+    "approval_events",
 }
 
 

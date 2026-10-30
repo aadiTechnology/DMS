@@ -38,7 +38,7 @@ from app.db.models import (
     Tag,
     TenantMembership,
 )
-from app.services import audit, extraction, search, taxonomy
+from app.services import approvals, audit, extraction, search, taxonomy
 from app.services.access import PUBLISHED
 from app.services.filetypes import FileRejected, check_declared_type, check_extension
 from app.services.metadata import validate_values
@@ -323,6 +323,9 @@ def finalize_available(
     # else: a later version in an approval category waits; readers keep the approved one
     document.row_version += 1
     document.updated_at = _now()
+    db.flush()
+    if approval_required:
+        approvals.submit(db, tenant_id, document, version, actor_id)
     if document.current_version_number == version.version_number:
         search.index_metadata(
             db, document, version.original_filename,

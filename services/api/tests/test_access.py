@@ -152,7 +152,9 @@ def test_administrators_reach_everything_through_an_audited_privileged_path(cast
     assert ("download", "highly_confidential", "administrator_privilege") in accesses
     assert ("preview", "highly_confidential", "administrator_privilege") in accesses
     assert ("view_metadata", "highly_confidential", "administrator_privilege") in accesses
-    assert all(e["privileged"] is True for e in events) and len(events) >= 6
+    # the pending memo is opened as an assigned reviewer (the administrator holds document.approve),
+    # which is the ordinary path, so only the Highly Confidential document is flagged
+    assert all(e["privileged"] is True for e in events) and len(events) == 3
     # administrators who own a document use the normal path, so it is not flagged
     own = make_doc(w, "highly_confidential", h=w.admin)
     before = len(events)

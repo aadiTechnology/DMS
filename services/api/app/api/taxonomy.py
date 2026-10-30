@@ -45,9 +45,17 @@ def _errors() -> Iterator[None]:
 # ---- schemas ----------------------------------------------------------------------------
 
 
+class ApprovalStepIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["user", "role", "department_manager"]
+    ref: uuid.UUID | None = None
+
+
 class PolicyIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    approval_steps: list[ApprovalStepIn] = []
     approval_required: bool = False
     required_dimensions: list[str] = []
     allowed_extensions: list[str] | None = None
@@ -90,6 +98,7 @@ class VersionOut(BaseModel):
     review_interval_days: int | None
     expiry_action: str
     reminder_days: list[int]
+    approval_steps: list[dict[str, Any]]
     created_at: datetime
     fields: list[FieldOut]
 
@@ -152,6 +161,7 @@ def _version_out(version, fields) -> VersionOut:
         review_interval_days=version.review_interval_days,
         expiry_action=version.expiry_action,
         reminder_days=version.reminder_days,
+        approval_steps=version.approval_steps,
         created_at=version.created_at,
         fields=[
             FieldOut(

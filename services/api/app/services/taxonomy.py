@@ -7,6 +7,7 @@ documents keep the schema they were created under (CAT-004); a change creates a 
 
 import re
 import unicodedata
+import uuid
 from typing import Any
 
 from sqlalchemy import select
@@ -22,6 +23,8 @@ CLASSIFICATIONS = ("public", "internal", "confidential", "highly_confidential")
 DIMENSIONS = ("department", "branch", "project", "employee")
 SYSTEM_TAGS = ("Pending", "Approved", "Archived")  # TAG-003
 MAX_PAGE_SIZE = 200
+MAX_APPROVAL_STEPS = 5
+STEP_TYPES = ("user", "role", "department_manager")
 _EXT = re.compile(r"^[a-z0-9]{1,10}$")
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 
@@ -50,6 +53,7 @@ def normalize_policy(policy: dict[str, Any] | None) -> dict[str, Any]:
         "review_interval_days",
         "expiry_action",
         "reminder_days",
+        "approval_steps",
     }
     if unknown:
         raise Invalid(f"policy: unknown setting(s): {', '.join(sorted(unknown))}")
@@ -74,7 +78,23 @@ def normalize_policy(policy: dict[str, Any] | None) -> dict[str, Any]:
         or not all(isinstance(d, int) and not isinstance(d, bool) and 0 <= d <= 365 for d in days)
     ):
         raise Invalid("policy.reminder_days: up to 10 whole numbers of days between 0 and 365")
+    steps = p.get("approval_steps") or []
+    if not isinstance(steps, list) or len(steps) > MAX_APPROVAL_STEPS:
+        raise Invalid(f"policy.approval_steps: at most {MAX_APPROVAL_STEPS} steps")
+    clean_steps = []
+    for step in steps:
+        kind = step.get("type") if isinstance(step, dict) else None
+        ref = step.get("ref") if isinstance(step, dict) else None
+        if kind not in STEP_TYPES or (kind == "department_manager") != (ref is None):
+            raise Invalid(
+                "policy.approval_steps: each step is {type: user|role, ref: id} or "
+                "{type: department_manager}"
+            )
+        clean_steps.append({"type": kind, "ref": str(ref) if ref else None})
+    if clean_steps and not p.get("approval_required", False):
+        raise Invalid("policy.approval_steps: only valid when approval_required is true")
     return {
+        "approval_steps": clean_steps,
         "approval_required": bool(p.get("approval_required", False)),
         "required_dimensions": sorted(set(dims)),
         "allowed_extensions": sorted(set(exts)) if exts is not None else None,
@@ -83,6 +103,21 @@ def normalize_policy(policy: dict[str, Any] | None) -> dict[str, Any]:
         "expiry_action": "archive",
         "reminder_days": sorted(set(days), reverse=True),
     }
+
+
+def validate_approval_steps(db: Session, tenant_id, steps: list[dict]) -> None:
+    """Reviewer references must be real, active members/roles of this organization."""
+    from app.db.models import Role, TenantMembership
+
+    for step in steps:
+        if step["type"] == "user":
+            m = db.get(TenantMembership, uuid.UUID(step["ref"]))
+            if m is None or m.tenant_id != tenant_id or m.status != "active":
+                raise Invalid("policy.approval_steps: reviewer must be an active employee")
+        elif step["type"] == "role":
+            r = db.get(Role, uuid.UUID(step["ref"]))
+            if r is None or r.tenant_id != tenant_id or r.status != "active":
+                raise Invalid("policy.approval_steps: role must be an active role")
 
 
 # ---- categories -------------------------------------------------------------------------
@@ -166,6 +201,7 @@ def create_category(
         raise Invalid(f"default_classification: use one of {', '.join(CLASSIFICATIONS)}")
     normalized = normalize_policy(policy)
     field_set = validate_field_set(list(fields or []))  # raises MetadataInvalid
+    validate_approval_steps(db, tenant_id, normalized["approval_steps"])
     everything = _all(db, tenant_id)
     _check_placement(everything, tenant_id, name, parent_id)
     cat = Category(
@@ -313,6 +349,7 @@ def create_version(db: Session, tenant_id, actor_id, category_id, *, policy, fie
         raise Conflict("Reactivate the category before changing its configuration")
     normalized = normalize_policy(policy)
     field_set = validate_field_set(list(fields or []))
+    validate_approval_steps(db, tenant_id, normalized["approval_steps"])
     number = cat.current_version_number + 1
     _write_version(db, tenant_id, actor_id, cat, number, normalized, field_set)
     cat.current_version_number = number

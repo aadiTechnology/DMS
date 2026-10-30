@@ -31,6 +31,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import (
+    ApprovalAssignment,
+    ApprovalRequest,
     Department,
     Document,
     DocumentAccessGrant,
@@ -144,6 +146,24 @@ class _Facts:
         ).first()
 
 
+def is_assigned_reviewer(
+    db: Session, membership_id, document_id, version_number: int | None = None
+) -> bool:
+    """Is this person a reviewer of a still-pending request on the document (or version)?"""
+    stmt = (
+        select(ApprovalAssignment.id)
+        .join(ApprovalRequest, ApprovalRequest.id == ApprovalAssignment.request_id)
+        .where(
+            ApprovalRequest.document_id == document_id,
+            ApprovalRequest.status == "pending",
+            ApprovalAssignment.membership_id == membership_id,
+        )
+    )
+    if version_number is not None:
+        stmt = stmt.where(ApprovalRequest.version_number == version_number)
+    return db.scalars(stmt).first() is not None
+
+
 def decide(
     db: Session,
     tenant_id: uuid.UUID,
@@ -174,6 +194,8 @@ def decide(
     is_owner = document.owner_membership_id == membership.id
     is_uploader = document.created_by_user_id == user_id
     privileged = Decision(True, "administrator_privilege", True) if PRIVILEGE in perms else None
+    if action == "view_metadata" and is_assigned_reviewer(db, membership.id, document.id):
+        return Decision(True, "reviewer")  # preview/download go through decide_version
 
     if document.lifecycle_state not in PUBLISHED:  # pending / rejected: not for general viewing
         if is_owner or is_uploader:
@@ -323,6 +345,8 @@ def decide_version(
         return Decision(True, "owner")
     if version.uploaded_by_user_id == user_id:
         return Decision(True, "uploader")
+    if is_assigned_reviewer(db, membership.id, document.id, version.version_number):
+        return Decision(True, "reviewer")
     if PRIVILEGE in perms:
         return Decision(True, "administrator_privilege", True)
     return _deny("version_not_published")

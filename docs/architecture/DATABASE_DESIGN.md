@@ -15,7 +15,7 @@ PostgreSQL 16, Alembic migrations in `services/api/migrations` (0001-0008 so far
 | Authorization and audit | `roles`, `role_permissions`, `user_role_assignments`, `audit_events` |
 | Organization | `departments`, `branches`, `projects`, `designations`, `employee_profiles`, `project_memberships` |
 | Taxonomy | `categories` (tree), `category_versions` (policy snapshot), `metadata_field_definitions`, `tags` |
-| Documents | `documents` (title, category + category version, classification, lifecycle state, owner, validated metadata, optimistic `row_version`), `document_versions` (file name, declared/real type and size, SHA-1/SHA-256, object key, storage file id, scan status, status, reservation expiry, idempotency key), `document_associations` (one row per department/branch/project/employee link), `document_tags`, `document_access_grants` (direct shares: view and download are separate rights, expiry, revocation history), `document_search` (weighted metadata vector, content vector, extraction state and attempts; GIN-indexed; no access data) |
+| Documents | `documents` (title, category + category version, classification, lifecycle state, owner, validated metadata, optimistic `row_version`), `document_versions` (file name, declared/real type and size, SHA-1/SHA-256, object key, storage file id, scan status, status, reservation expiry, idempotency key), `document_associations` (one row per department/branch/project/employee link), `document_tags`, `document_access_grants` (direct shares: view and download are separate rights, expiry, revocation history), `approval_requests` (one pending per document, steps snapshot), `approval_assignments` and `approval_events` (insert-only), `document_search` (weighted metadata vector, content vector, extraction state and attempts; GIN-indexed; no access data) |
 
 ## Taxonomy details
 - `categories`: sibling names unique case-insensitively (expression index handles top-level nodes); maximum depth is a setting (`CATEGORY_MAX_DEPTH`, default 8).
@@ -27,4 +27,4 @@ PostgreSQL 16, Alembic migrations in `services/api/migrations` (0001-0008 so far
 `pending` (reserved) -> `receiving` -> `available` | `quarantined` (virus) | `rejected` (failed validation); unfinished reservations become `abandoned`. Only `available` versions are usable. Separately, `review_status` (`none`, `pending`, `approved`, `rejected`) gates publication: only `none`/`approved` versions are served to general readers; `restored_from_version` records restore lineage. Version rows keep the object key and Backblaze file id so substitution can be detected.
 
 ## Planned
-Sharing grants; approvals; retention and legal hold; notifications; storage-usage ledger; search index state.
+Sharing grants API; retention and legal hold; notifications; storage-usage ledger; search index state.

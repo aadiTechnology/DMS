@@ -65,6 +65,17 @@ Category policy fields: `approval_required`, `required_dimensions` (department, 
 | GET `/search/index/status` | admin.manage_organization | Extraction counts (pending, processing, indexed, failed, unsupported) and failures with reason codes (no titles or content) |
 | POST `/search/index/retry`, POST `/search/index/run` | admin.manage_organization | Re-queue failed extractions; process queued extractions now |
 
+| GET `/approvals/queue` | signed in | Reviews waiting for your decision, oldest first (`limit`, `offset`) |
+| GET `/approvals/pending` | document.access_all | Every pending review including ones with nobody assigned (`reviewers_on_step`); audited |
+| GET `/approvals/{id}` | submitter, owner, assigned reviewer or privileged admin | Steps, assignments, full event history, `can_decide` |
+| GET `/documents/{id}/approvals` | same as above | Every submission of a document with its decisions, newest first |
+| POST `/approvals/{id}/approve` | document.approve + assigned (or privileged) | Optional `comment`. Last step releases the version. Not for your own submission (403). Repeating is harmless; 409 once the request is decided |
+| POST `/approvals/{id}/reject` | document.reject + assigned (or privileged) | Body `reason` (required). 409 once decided |
+| POST `/approvals/{id}/comments` | anyone who can view the review | Body `comment`; 201 |
+| POST `/documents/{id}/resubmit` | document.upload + owner/uploader | After a rejection; 201 with the new request; 409 if nothing was rejected |
+
+Categories accept `policy.approval_steps` (list of `{type: user|role|department_manager, ref}`), only together with `approval_required`.
+
 Login with MFA on: `POST /auth/login` answers `401 {"detail":{"code":"mfa_required"}}` after a correct password; resend with `mfa_code` (authenticator or recovery code). Wrong codes count toward lockout.
 
 Planned groups follow the PRD section 17 list as each sprint ships.

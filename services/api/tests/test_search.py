@@ -8,7 +8,13 @@ from sqlalchemy import select, text
 
 from app.core import ratelimit
 from app.core.config import get_settings
-from app.db.models import Document, DocumentAccessGrant, DocumentAssociation
+from app.db.models import (
+    ApprovalAssignment,
+    ApprovalRequest,
+    Document,
+    DocumentAccessGrant,
+    DocumentAssociation,
+)
 from app.db.tenant_session import tenant_session
 from app.services import access
 from app.services.access_sql import load_viewer, visible_clause
@@ -407,6 +413,21 @@ def test_sql_visibility_equals_the_policy_engine_for_every_viewer(cast):
             ):
                 s.add(DocumentAccessGrant(tenant_id=w.ta, document_id=d.id, grantee_membership_id=grantee[key].mid,
                                           granted_by_user_id=w.admin_a, can_view=True, **kw))  # fmt: skip
+        s.flush()
+        for n, d in enumerate(created):
+            if d.lifecycle_state != "submitted" or n % 2:
+                continue
+            for status, assign in (("rejected", n % 4 == 0), ("pending", n % 4 == 2)):
+                if status == "rejected" and d.classification == "public":
+                    continue  # a decided request must not open the document to its reviewer
+                req = ApprovalRequest(
+                    tenant_id=w.ta, document_id=d.id, version_number=1, status=status,
+                    current_step=1, steps=[{"type": "any"}], submitted_by_user_id=w.emp_a,
+                )  # fmt: skip
+                s.add(req)
+                s.flush()
+                if assign:
+                    s.add(ApprovalAssignment(tenant_id=w.ta, request_id=req.id, step_number=1, membership_id=p.rev.mid))  # fmt: skip
         doc_ids = [d.id for d in created]
 
     viewers = {
@@ -443,7 +464,7 @@ def test_sql_visibility_equals_the_policy_engine_for_every_viewer(cast):
     # sanity: the matrix really exercised both outcomes for the interesting viewers
     sizes = {}
     with tenant_session(w.ta, w.engine) as s:
-        for name in ("stranger", "dm", "g_ok", "g_expired", "admin"):
+        for name in ("stranger", "dm", "g_ok", "g_expired", "admin", "rev"):
             sizes[name] = len(
                 set(
                     s.scalars(
@@ -455,6 +476,7 @@ def test_sql_visibility_equals_the_policy_engine_for_every_viewer(cast):
                 )
             )
     assert 0 < sizes["stranger"] < sizes["dm"] < sizes["admin"] == len(doc_ids)
+    assert sizes["rev"] > 0  # assigned reviewers reach pending documents
     assert (
         sizes["g_ok"] > sizes["g_expired"]
     )  # a valid share adds documents; an expired one adds none

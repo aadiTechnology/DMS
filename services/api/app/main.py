@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
 from app.api import (
+    approvals,
     audit,
     auth,
     dev_storage,
@@ -30,6 +31,7 @@ app.include_router(audit.router)
 app.include_router(taxonomy.router)
 app.include_router(documents.router)
 app.include_router(versions.router)
+app.include_router(approvals.router)
 app.include_router(search.router)
 if dev_storage_enabled(get_settings()):
     app.include_router(dev_storage.router)

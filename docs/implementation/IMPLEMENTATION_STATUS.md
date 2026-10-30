@@ -248,3 +248,20 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** Backblaze server-side copy against the real service (simulator only); behavior of very large copies; CI on GitHub.
 
 **Next recommended:** Sprint 15, approval workflow: configurable steps and reviewers, review queue, approve/reject with mandatory reasons and comments, resubmission, reviewers' access to the pending version, release of held versions, and notification hooks.
+
+## Sprint 15: Approval workflow (done)
+**Changed:** migration `0013` (`category_versions.approval_steps`, `approval_requests`, `approval_assignments`, `approval_events`, RLS, insert-only grants for history), `app/services/approvals.py`, `app/api/approvals.py`, reviewer rule in `access.py` and `access_sql.py`, upload finalization now starts a review when the category needs one, step validation in taxonomy, ordered event timestamps.
+
+**Decision (simple terms):** when a document needs approval, a review starts by itself. By default anyone with approval rights (other than the person who submitted it) can decide; a category can instead name people, roles or the department manager, in up to five steps. Reviewers can open the version they are asked to review; nobody else can until it is approved. Rejecting needs a reason, the uploader can fix and resubmit, and all earlier decisions stay on record. Nobody, including administrators, can approve their own submission. If a step has no eligible reviewer an administrator can step in, and that is flagged and audited.
+
+**Requirements touched:** PRD 8.4/WF approval items (configurable steps, queue, approve/reject with reasons, comments, resubmission, history), 7.4 (reviewer access ends with the decision). Not complete: notifications and reminders (Sprint after next; events are recorded for them), delegation/escalation/due dates, "all reviewers must approve" steps, approval of deletion (retention sprint).
+
+**Decisions to note:** one default step; any one assigned reviewer completes a step; the first version of an approval-required document stays unpublished until approved; reviewers do not get download rights from reviewing.
+
+**Bugs found by tests and fixed:** events written in one transaction shared one timestamp so their order was random (timestamps now set per row); reviewer tests exposed that department managers need the manager role to be eligible (by design).
+
+**Tests executed (observed, local Postgres 16):** 12 new approval tests and the SQL-versus-policy equivalence test now includes an assigned reviewer, all passing; full suite `uv run pytest -q`: 323 passed, 2 skipped (live B2), 1 failed (an older versions test whose hand-made approval helper left a review open); helper fixed and `test_versions.py` + `test_db_foundation.py` re-run green (26 passed). `ruff` clean.
+
+**Not verified:** notifications (not built); behaviour with very many reviewers; CI on GitHub.
+
+**Next recommended:** Sprint 16, sharing: create/revoke grants, "shared with me / by me", expiry.

@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import (
@@ -514,6 +514,9 @@ class CategoryVersion(Base):
     reminder_days: Mapped[list[int]] = mapped_column(
         ARRAY(Integer), nullable=False, server_default=text("'{}'")
     )
+    approval_steps: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
     created_at: Mapped[datetime] = created_at_col()
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
@@ -770,3 +773,97 @@ class DocumentSearch(Base):
     truncated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     indexed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = created_at_col()
+
+
+class ApprovalRequest(Base):
+    """One review of one document version (PRD 8.2). Decisions are append-only events."""
+
+    __tablename__ = "approval_requests"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending','approved','rejected','cancelled')", name="status"),
+        Index(
+            "uq_approval_requests_pending_document",
+            "document_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+        Index("ix_approval_requests_tenant_id_status", "tenant_id", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="RESTRICT"), nullable=False
+    )
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
+    current_step: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    steps: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    submitted_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    resubmission_of: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("approval_requests.id", ondelete="RESTRICT", name="fk_approval_requests_resub"),
+        nullable=True,
+    )
+    submitted_at: Mapped[datetime] = created_at_col()
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ApprovalAssignment(Base):
+    """A reviewer assigned to a step when that step starts."""
+
+    __tablename__ = "approval_assignments"
+    __table_args__ = (UniqueConstraint("request_id", "step_number", "membership_id"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("approval_requests.id", ondelete="RESTRICT"), nullable=False
+    )
+    step_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    membership_id: Mapped[uuid.UUID] = _membership_fk(nullable=False)
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class ApprovalEvent(Base):
+    """Insert-only history: submissions, decisions, comments, resubmissions."""
+
+    __tablename__ = "approval_events"
+    __table_args__ = (
+        CheckConstraint(
+            "action IN ('submitted','step_started','approved','rejected','commented','resubmitted')",
+            name="action",
+        ),
+        Index(
+            "uq_approval_events_decision",
+            "request_id",
+            "step_number",
+            "actor_user_id",
+            "action",
+            unique=True,
+            postgresql_where=text("action IN ('approved','rejected')"),
+        ),
+        Index("ix_approval_events_request_id_created_at", "request_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    request_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("approval_requests.id", ondelete="RESTRICT"), nullable=False
+    )
+    step_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    action: Mapped[str] = mapped_column(String(20), nullable=False)
+    comment: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    privileged: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # set in Python, not now(): events written in one transaction must keep their order
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(UTC),
+    )

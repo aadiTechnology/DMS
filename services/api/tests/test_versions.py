@@ -77,6 +77,12 @@ def fetch(w, h, doc, number, action="download"):
 def approve_by_hand(w, doc, number):
     """Stand-in for the approval workflow (next sprint): mark a version and document approved."""
     with w.engine.begin() as c:
+        c.execute(  # close the review the upload opened, as the workflow would
+            text(
+                "UPDATE approval_requests SET status='approved' WHERE document_id=:d AND status='pending'"
+            ),
+            {"d": doc},
+        )
         c.execute(
             text(
                 "UPDATE document_versions SET review_status='approved' WHERE document_id=:d AND version_number=:n"
