@@ -144,3 +144,24 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Needed from you before Sprint 9:** a new private DMS-only B2 bucket + restricted key for dev/test (report only "configured"/"not configured"); see `docs/deployment/STORAGE_CONFIGURATION.md`. Also pending and urgent: rotate the exposed ERP key. If these are not ready I can still build and test the Backblaze adapter against a faked B2 API and leave live verification marked "not verified".
 
 **Next recommended:** Sprint 9 (Backblaze adapter), or, if the bucket is not ready, Sprint 9b: taxonomy (categories, metadata schemas, tags, classifications) which has no storage dependency.
+
+## Sprint 9: Backblaze adapter on native b2sdk (done; live connectivity NOT verified)
+**Product Owner direction followed:** native `b2sdk` kept, no boto3/S3, dedicated DMS bucket and key only, ERP untouched, no simulated-only final adapter (the adapter is real; only its automated tests use the SDK's own `RawSimulator`).
+
+**Changed:** `app/storage/backblaze.py` (adapter), `app/storage/base.py` (interface is now `put_file`/`stat`/`read_stream`/`create_download_url`/`delete`/`health`; `create_upload_target` removed), local adapter and dev router aligned, factory builds `BackblazeStorage`, dependency `b2sdk>=2.8,<3` (installed 2.13.2), ADR-0002, operations runbook, test doc, storage docs. The audit findings were checked against the installed SDK rather than repeating the audit.
+
+**Decision to note (explained; not a change of direction):** the audit recommended direct browser-to-B2 uploads. In native B2 the upload token is bucket-wide and lasts 24 hours, so a client would hold a token able to write any key (ADR-0002). The API therefore streams uploads to disk, hashes once, and uploads with `b2sdk`; downloads remain direct via exact-key, 5-minute, attachment-forcing links. S3 presigned uploads would also solve this but were judged not worth leaving the native API.
+
+**Improvements over the ERP code:** private bucket verified at connect; ERP bucket names refused; key capability and bucket-restriction check; immutable objects; SHA-1 verified by B2 and re-checked, SHA-256 recorded; file id recorded to detect substitution; all versions deleted and errors raised; sanitized errors; 5-minute links; `Cache-Control: private, no-store`.
+
+**Requirements touched:** STO-002 (private storage, native B2 per ADR), STO-008 (short exact-key links), STO-005 groundwork (checksums recorded per version in the upload sprint). Not complete: upload workflow, metering, retention.
+
+**Tests executed (observed):** `uv run pytest -q` 164 passed, 2 skipped (the live test, which needs your bucket); `ruff` clean. 14 adapter tests run the real adapter against `b2sdk.RawSimulator`.
+
+**Findings while testing (fixed):** large (multi-part) files report their SHA-1 in file info, so the adapter reads it with `get_content_sha1()`. The simulator rejects uploads made with bucket-restricted keys, so least-privilege behavior can only be proven live.
+
+**Not verified:** everything against real Backblaze (connect, `listBuckets` behavior with a bucket-restricted key, upload/download/delete, forced `b2ContentDisposition` on authorized links, SDK retry/timeouts, 100 MB memory and time).
+
+**Needed from you to verify live:** a new private DMS test bucket plus a bucket-restricted key with the six capabilities in `docs/deployment/STORAGE_CONFIGURATION.md`, set through your own secret store; then run the command in `docs/testing/B2_INTEGRATION_TESTS.md` and tell me the PASS/FAIL text only. Also still pending: rotate the exposed ERP key.
+
+**Next recommended:** taxonomy (categories, metadata schemas, tags, classifications), then the upload pipeline on top of `put_file`.

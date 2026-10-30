@@ -11,7 +11,6 @@ import os
 import time
 import uuid
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
@@ -22,9 +21,9 @@ from app.storage.base import (
     ObjectInfo,
     ObjectNotFound,
     StorageError,
-    UploadTarget,
+    StoredObject,
+    check_put,
     check_ttl,
-    check_upload_request,
 )
 
 URL_PREFIX = "/api/v1/dev-storage"
@@ -82,27 +81,31 @@ class LocalStorage:
         return f"{self._settings.API_BASE_URL}{URL_PREFIX}/{self._sign(payload)}"
 
     # ---- StorageProvider ----
-    def create_upload_target(
-        self, key: str, *, content_type: str, size_bytes: int, ttl_seconds: int
-    ) -> UploadTarget:
+    def put_file(
+        self,
+        key: str,
+        path: Path,
+        *,
+        content_type: str,
+        sha1: str,
+        sha256: str | None = None,
+    ) -> StoredObject:
         keys.assert_valid_key(key)
-        check_upload_request(
-            content_type, size_bytes, ttl_seconds, self._settings.DMS_MAX_UPLOAD_BYTES
-        )
-        expires = datetime.now(UTC) + timedelta(seconds=ttl_seconds)
-        payload = {
-            "k": key,
-            "m": "PUT",
-            "e": int(expires.timestamp()),
-            "s": size_bytes,
-            "c": content_type,
-        }
-        return UploadTarget(
-            url=self._url(payload),
-            method="PUT",
-            headers={"Content-Type": content_type},
-            expires_at=expires,
-        )
+        size = path.stat().st_size
+        check_put(content_type, size, sha1, self._settings.DMS_MAX_UPLOAD_BYTES)
+        writer = self.begin_write(key, content_type=content_type, expected_size=size)
+        digest = hashlib.sha1(usedforsecurity=False)
+        try:
+            with path.open("rb") as source:
+                while chunk := source.read(1024 * 1024):
+                    digest.update(chunk)
+                    writer.write(chunk)
+            if digest.hexdigest() != sha1:
+                raise StorageError("checksum mismatch")
+            writer.commit()
+        finally:
+            writer.close()
+        return StoredObject(file_id=None, size_bytes=size, sha1=sha1)
 
     def create_download_url(self, key: str, *, ttl_seconds: int, filename: str) -> str:
         keys.assert_valid_key(key)
@@ -122,9 +125,11 @@ class LocalStorage:
         sha1 = hashlib.sha1(usedforsecurity=False)
         for chunk in self.read_stream(key):
             sha1.update(chunk)
-        return ObjectInfo(path.stat().st_size, self._content_type(path), sha1.hexdigest())
+        return ObjectInfo(path.stat().st_size, self._content_type(path), sha1.hexdigest(), None)
 
-    def read_stream(self, key: str, chunk_size: int = 1024 * 1024) -> Iterator[bytes]:
+    def read_stream(
+        self, key: str, chunk_size: int = 1024 * 1024, *, file_id: str | None = None
+    ) -> Iterator[bytes]:
         path = self._path(key)
         if not path.is_file():
             raise ObjectNotFound("object not found")

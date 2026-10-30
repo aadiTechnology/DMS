@@ -13,16 +13,20 @@ Names only. Never put real values in this repository, in chat, in logs or in scr
 | `DMS_DOWNLOAD_URL_TTL_SECONDS` | Lifetime of download links (default 300, allowed 30-900) | No | all | env |
 | `DMS_MAX_UPLOAD_BYTES` | Maximum file size (default 104857600 = 100 MB) | No | all | env |
 
-Status: the Backblaze variable names are provisional until Sprint 9 verifies them against a real test bucket.
+Status: the variable names are final for the code (Sprint 9) but not yet proven against a live bucket.
 
 ## Rules enforced by the application at startup (tested)
 - `ENVIRONMENT=production` requires `STORAGE_PROVIDER=backblaze`.
 - `backblaze` requires all three `DMS_B2_*` values.
 - The bucket name may not be one of the existing ERP buckets (`attachmentserp-b2`, `aaditech-erp-test-v2`).
-- The local-storage download/upload route (`/api/v1/dev-storage`) is mounted only for `local` storage outside production.
+- The local-storage download route (`/api/v1/dev-storage`) is mounted only for `local` storage outside production.
+- At first use the Backblaze adapter refuses a bucket that is not private.
 
-## What you must provide before Sprint 9 (tell me only "configured" / "not configured")
-1. A **new private** bucket for development/test, and later one each for staging and production. Never reuse an ERP bucket.
-2. An application key per environment, restricted to that one bucket, with only the capabilities the DMS uses (list/read/write/delete files; no key management).
-3. The key stored only in your secret store (local untracked `.env`, or the hosting platform's encrypted settings), never in Git.
-4. Rotate the ERP key that is committed in the ERP repository (`BACKBLAZE_STATUS.txt`); it must not be reused anywhere.
+## What you must provide for live verification (tell me only "configured" / "not configured")
+1. A **new private** bucket for development/test, and later one each for staging and production. Never reuse an ERP bucket. Leave file versioning at the Backblaze default.
+2. One application key per environment, **restricted to that single bucket**, with exactly these capabilities: `listBuckets`, `listFiles`, `readFiles`, `writeFiles`, `deleteFiles`, `shareFiles`. The live test reports anything missing or extra; `writeKeys`, `deleteBuckets` and similar must not be present.
+3. The key stored only in your secret store (untracked `.env` locally, the hosting platform's encrypted settings in staging/production), never in Git or chat.
+4. Rotate the ERP key committed in the ERP repository (`BACKBLAZE_STATUS.txt`); it must not be reused anywhere.
+5. Optional hardening in the Backblaze console: enable default bucket encryption; do not add lifecycle rules that delete versions (retention is decided by the DMS, PRD 8.4).
+
+Run the live test with the commands in `docs/testing/B2_INTEGRATION_TESTS.md`.

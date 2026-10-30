@@ -1,6 +1,8 @@
 import hashlib
+import tempfile
 import time
 import uuid
+from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 import pytest
@@ -11,7 +13,7 @@ from app.core.config import Settings
 from app.main import app
 from app.storage import build_storage, dev_storage_enabled
 from app.storage import keys as k
-from app.storage.base import ObjectExists, ObjectNotFound, StorageConfigError
+from app.storage.base import ObjectExists, ObjectNotFound, StorageError
 from app.storage.local import LocalStorage
 
 TENANT, DOC, OBJ = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
@@ -105,18 +107,24 @@ def path_of(url: str) -> str:
     return urlparse(url).path
 
 
-def upload(http, storage, key, data: bytes, content_type="application/pdf", **kw):
-    target = storage.create_upload_target(
-        key, content_type=content_type, size_bytes=kw.pop("declared", len(data)), ttl_seconds=60
-    )
-    return target, http.put(path_of(target.url), content=data, headers=target.headers)
+def put(storage, key, data: bytes, content_type="application/pdf", sha1=None, tmp_dir=None):
+    """Write `data` to a temp file and store it the way the upload sprint will."""
+    with tempfile.NamedTemporaryFile(delete=False, dir=tmp_dir) as handle:
+        handle.write(data)
+    path = Path(handle.name)
+    try:
+        return storage.put_file(
+            key, path, content_type=content_type, sha1=sha1 or hashlib.sha1(data).hexdigest()
+        )
+    finally:
+        path.unlink(missing_ok=True)
 
 
 def test_upload_verify_download_delete_roundtrip(storage, http):
     key, data = key_for("अनुबंध.pdf"), b"%PDF-1.7 hello" * 100
     assert storage.stat(key) is None
-    target, r = upload(http, storage, key, data)
-    assert r.status_code == 201 and target.method == "PUT"
+    stored = put(storage, key, data)
+    assert stored.size_bytes == len(data) and stored.sha1 == hashlib.sha1(data).hexdigest()
     info = storage.stat(key)
     assert info.size_bytes == len(data) and info.content_type == "application/pdf"
     assert info.sha1 == hashlib.sha1(data).hexdigest()
@@ -133,68 +141,69 @@ def test_upload_verify_download_delete_roundtrip(storage, http):
         list(storage.read_stream(key))
 
 
-def test_objects_are_immutable(storage, http):
+def test_objects_are_immutable(storage):
     key = key_for()
-    assert upload(http, storage, key, b"v1")[1].status_code == 201
-    assert upload(http, storage, key, b"v2-overwrite")[1].status_code == 409
-    assert b"".join(storage.read_stream(key)) == b"v1"
+    put(storage, key, b"v1")
     with pytest.raises(ObjectExists):
-        storage.write_exclusive(key, iter([b"x"]), content_type="text/plain", expected_size=1)
+        put(storage, key, b"v2-overwrite")
+    assert b"".join(storage.read_stream(key)) == b"v1"
 
 
-def test_declared_size_is_enforced_without_leaving_partial_files(storage, http):
+def test_checksum_mismatch_is_rejected_and_leaves_nothing(storage):
     key = key_for()
-    _, too_big = upload(http, storage, key, b"0123456789", declared=5)
-    assert too_big.status_code == 400  # Content-Length differs from the authorized size
-    target = storage.create_upload_target(
-        key, content_type="text/plain", size_bytes=5, ttl_seconds=60
-    )
-    # a body that streams more than authorized is cut off
-    with pytest.raises(Exception, match="larger"):
+    with pytest.raises(StorageError, match="checksum"):
+        put(storage, key, b"payload", sha1="0" * 40)
+    assert storage.stat(key) is None
+    assert list(storage.root.rglob("*.part")) == []
+
+
+def test_streamed_size_is_enforced_without_leaving_partial_files(storage):
+    key = key_for()
+    with pytest.raises(StorageError, match="larger"):
         storage.write_exclusive(
             key, iter([b"123", b"456"]), content_type="text/plain", expected_size=5
         )
-    with pytest.raises(Exception, match="smaller"):
+    with pytest.raises(StorageError, match="smaller"):
         storage.write_exclusive(key, iter([b"12"]), content_type="text/plain", expected_size=5)
     assert storage.stat(key) is None
-    assert [p for p in storage.root.rglob("*.part")] == []
-    assert target.expires_at is not None
+    assert list(storage.root.rglob("*.part")) == []
 
 
-def test_request_limits(storage):
+def test_put_request_limits(storage, tmp_path):
     key = key_for()
-    big = storage._settings.DMS_MAX_UPLOAD_BYTES + 1
+    good = hashlib.sha1(b"x").hexdigest()
+    path = tmp_path / "f"
+    path.write_bytes(b"x")
     for kwargs in (
-        {"size_bytes": big, "content_type": "application/pdf", "ttl_seconds": 60},
-        {"size_bytes": 0, "content_type": "application/pdf", "ttl_seconds": 60},
-        {"size_bytes": 10, "content_type": "not a type", "ttl_seconds": 60},
-        {"size_bytes": 10, "content_type": "application/pdf", "ttl_seconds": 3600},
-        {"size_bytes": 10, "content_type": "application/pdf", "ttl_seconds": 0},
+        {"content_type": "not a type", "sha1": good},
+        {"content_type": "application/pdf", "sha1": "XYZ"},
+        {"content_type": "application/pdf", "sha1": good.upper()},
     ):
         with pytest.raises(ValueError):
-            storage.create_upload_target(key, **kwargs)
+            storage.put_file(key, path, **kwargs)
+    empty = tmp_path / "empty"
+    empty.write_bytes(b"")
+    with pytest.raises(ValueError):
+        storage.put_file(key, empty, content_type="application/pdf", sha1=good)
     with pytest.raises(ValueError):
         storage.create_download_url(key, ttl_seconds=901, filename="a.pdf")
 
 
 def test_signed_urls_are_bound_to_key_method_and_time(storage, http):
     key, other = key_for(), key_for("other.pdf", obj=uuid.uuid4())
-    upload(http, storage, key, b"secret")
-    upload(http, storage, other, b"other")
+    put(storage, key, b"secret")
+    put(storage, other, b"other")
     dl = path_of(storage.create_download_url(key, ttl_seconds=60, filename="x.pdf"))
     assert http.get(dl).content == b"secret"
-    # a download token cannot upload, and an upload token cannot download
-    assert http.put(dl, content=b"x").status_code == 403
-    target = storage.create_upload_target(
-        key_for(obj=uuid.uuid4()), content_type="text/plain", size_bytes=1, ttl_seconds=60
-    )
-    assert http.get(path_of(target.url)).status_code == 403
+    assert http.put(dl, content=b"x").status_code == 405  # there is no upload route any more
     # tampering with the token (e.g. swapping the key) breaks the signature
     body, sig = dl.rsplit("/", 1)[1].rsplit(".", 1)
     forged = f"{body[:-2]}AA.{sig}"
     assert http.get(f"/api/v1/dev-storage/{forged}").status_code == 403
     assert http.get("/api/v1/dev-storage/garbage").status_code == 403
-    # expired links
+    # wrong method inside a validly signed token, and expired links
+    wrong = storage._sign({"k": key, "m": "PUT", "e": int(time.time()) + 60, "f": "x.pdf"})
+    assert http.get(f"/api/v1/dev-storage/{wrong}").status_code == 403
     expired = storage._sign({"k": key, "m": "GET", "e": int(time.time()) - 1, "f": "x.pdf"})
     assert http.get(f"/api/v1/dev-storage/{expired}").status_code == 403
 
@@ -259,6 +268,7 @@ def test_factory_and_dev_router_gating(tmp_path):
     assert dev_storage_enabled(local) is True
     b2 = Settings(_env_file=None, **B2)
     assert dev_storage_enabled(b2) is False
-    with pytest.raises(StorageConfigError):  # adapter arrives in Sprint 9; never fall back to disk
-        build_storage(b2)
+    assert (
+        type(build_storage(b2)).__name__ == "BackblazeStorage"
+    )  # connects lazily; no network here
     assert dev_storage_enabled(Settings(_env_file=None, **PROD, **B2)) is False

@@ -9,8 +9,11 @@ def build_storage(settings: Settings) -> StorageProvider:
         from app.storage.local import LocalStorage
 
         return LocalStorage(settings)
-    # The Backblaze adapter arrives in Sprint 9. Failing loudly beats silently using local disk.
-    raise StorageConfigError("The Backblaze storage adapter is not implemented yet")
+    if settings.STORAGE_PROVIDER == "backblaze":
+        from app.storage.backblaze import BackblazeStorage
+
+        return BackblazeStorage(settings)
+    raise StorageConfigError("unknown storage provider")
 
 
 @lru_cache
