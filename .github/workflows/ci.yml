@@ -6,6 +6,17 @@ jobs:
     defaults:
       run:
         working-directory: services/api
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dms
+          POSTGRES_PASSWORD: dms_dev
+          POSTGRES_DB: dms
+        ports:
+          - 15432:5432
+        options: >-
+          --health-cmd "pg_isready -U dms" --health-interval 5s --health-timeout 3s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
