@@ -6,7 +6,9 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     String,
+    Text,
     UniqueConstraint,
     func,
     text,
@@ -49,6 +51,40 @@ class User(Base):
     preferred_language: Mapped[str] = mapped_column(String(10), nullable=False, server_default="en")
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
     created_at: Mapped[datetime] = created_at_col()
+    password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    failed_login_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class UserSession(Base):
+    """One signed-in session bound to a tenant. Refresh tokens rotate; only hashes are stored.
+
+    Revoking a session (logout, reuse detection, deactivation) invalidates its access tokens on
+    the next request because every request checks this row (PRD 7.4 session revocation).
+    """
+
+    __tablename__ = "user_sessions"
+    __table_args__ = (
+        UniqueConstraint("refresh_hash"),
+        Index("ix_user_sessions_user_id", "user_id"),
+        Index("ix_user_sessions_prev_refresh_hash", "prev_refresh_hash"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=False
+    )
+    refresh_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    prev_refresh_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = created_at_col()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_reason: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
 
 class TenantMembership(Base):

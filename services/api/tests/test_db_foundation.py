@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from tests.conftest import alembic_config
 
-TABLES = {"tenants", "users", "tenant_memberships"}
+TABLES = {"tenants", "users", "tenant_memberships", "user_sessions"}
 
 
 def _tables(engine) -> set[str]:

@@ -16,5 +16,16 @@ Three independent layers, so one mistake cannot expose another customer's data:
 
 **Known limits:** the app connects as the owner role and switches with `SET LOCAL ROLE`; a code path that opens a plain session instead of `tenant_session` would bypass RLS (owner/superuser). Rule: all request code uses `get_tenant_db`. Platform-operator access will use a separate, audited path. Search indexes, caches, exports, object keys and job context carry the same tenant rule when those features are built.
 
-## 2. Planned
+## 2. Authentication and sessions (Sprint 3, implemented and tested)
+
+- **Login:** email + password (Argon2id hashes, never stored in clear). Unknown user, wrong password, locked, disabled and no-membership all return the same `401 Invalid email or password` and spend the same hashing time, so attackers learn nothing about which accounts exist.
+- **Lockout:** 5 consecutive failures lock the account for 15 minutes (configurable); success resets the counter. Plus an in-process rate limit on login/refresh (30/min/IP). *Limit:* the rate limiter is per process; move to a shared store when workers/hosting are chosen.
+- **Tenant choice:** a user in several organizations gets `409 tenant_required` with their own tenant list and picks one; a session is bound to exactly one tenant.
+- **Tokens:** access token is a signed JWT valid 15 minutes (carries user, tenant, session ids). Refresh tokens are random, stored only as SHA-256 hashes, valid 14 days, and **rotate on every use**. Replaying an already-used refresh token is treated as theft and revokes the whole session.
+- **Immediate revocation (PRD 7.4):** every request checks the session row plus active user, active membership and active tenant. Logout, disabling a user, or deactivating a membership blocks existing access tokens on their next request, not at expiry.
+- **Database roles:** `dms_auth` (users, sessions, cross-tenant read of memberships/tenants, for login only) and `dms_app` (tenant work, no access to users or sessions) are separate, so request code cannot read other people's credentials.
+- **Production guard:** the app refuses to start with `ENVIRONMENT=production` and a default or short `SECRET_KEY`.
+- **Not yet built (later sprints):** password reset and email verification, invitations and self-registration approval (Sprint 6), Google/Microsoft SSO and optional MFA (Sprint 6), audit events for login/logout (Sprint 5, PRD requires them), refresh-token cleanup job.
+
+## 3. Planned
 RBAC roles/permissions, document-level policy (classification, ownership, grants, workflow state, legal hold), admin-privilege audit: Sprint 5 onward.

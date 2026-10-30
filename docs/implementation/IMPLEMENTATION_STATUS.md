@@ -60,3 +60,16 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 **Not verified:** CI on GitHub; behavior with a non-superuser owner role (production-like setup) and `GRANT dms_app` permissions there; performance of RLS predicate at scale.
 
 **Next recommended:** Sprint 3, authentication I (email/password, JWT + refresh, revocation, lockout and rate limit), replacing the 401 stub in `get_principal`.
+
+## Sprint 3: Authentication I (done)
+**Changed:** migration `0003` (password/lockout columns on `users`, `user_sessions`, role `dms_auth`), `app/core/{security,ratelimit,config,tenancy}.py`, `app/services/auth.py`, `app/api/auth.py` (`POST /api/v1/auth/login|refresh|logout`, `GET /api/v1/auth/me`), real `get_principal` replacing the 401 stub. New deps: `argon2-cffi`, `pyjwt`.
+
+**Decisions (simple terms):** passwords are stored only as strong one-way hashes; sign-in gives a 15-minute pass plus a rotating renewal token; the server checks on every request that the session and the person's membership are still valid, so removing someone locks them out immediately.
+
+**Requirements touched:** PRD 15.1 (password hashing, lockout, rate limiting), 7.4 (revocation invalidates sessions), email/password login (App.A #13). Audit logging of auth events is NOT done (Sprint 5).
+
+**Tests executed (observed, local Postgres 16):** `uv run pytest -q` 52 passed (24 new auth tests: login, enumeration resistance, lockout and recovery, multi-tenant choice, disabled/inactive, tampered/expired/unknown-session tokens, refresh rotation and theft detection, logout, instant revocation, hashed storage, role privileges, rate limit, production secret guard); `ruff` clean.
+
+**Not verified:** login p95 <= 2 s (no load test yet; Argon2 default cost is a tunable); CI on GitHub; behavior behind a proxy (rate limit uses socket IP; trusted-proxy handling needed at deployment).
+
+**Next recommended:** Sprint 4, organization structure (departments, branches, projects, designations, employee assignments; ORG-001..008).

@@ -6,6 +6,7 @@ A transaction without a tenant context matches no rows (deny by default).
 """
 
 APP_ROLE = "dms_app"
+AUTH_ROLE = "dms_auth"
 TENANT_SETTING = "app.tenant_id"
 
 _CURRENT_TENANT = f"nullif(current_setting('{TENANT_SETTING}', true), '')::uuid"
