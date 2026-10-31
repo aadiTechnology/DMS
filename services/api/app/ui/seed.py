@@ -13,10 +13,24 @@ from app.db.tenant_session import platform_session
 from app.services.org import Conflict, Invalid
 from app.ui import service
 
+# The five launch designs are listed in this order in the "Choose your design" page; other files follow by name.
+PREFERRED_ORDER = [
+    "modern-enterprise",
+    "premium-dark",
+    "minimalist-productivity",
+    "modern-saas",
+    "enterprise-productivity",
+]
+
+
+def _order(path: Path) -> tuple[int, str]:
+    stem = path.stem
+    return (PREFERRED_ORDER.index(stem) if stem in PREFERRED_ORDER else len(PREFERRED_ORDER), stem)
+
 
 def seed_directory(directory: Path, *, engine=None) -> dict[str, list[str]]:
     report: dict[str, list[str]] = {"imported": [], "skipped": [], "failed": []}
-    for path in sorted(directory.glob("*.json")):
+    for path in sorted(directory.glob("*.json"), key=_order):
         try:
             with platform_session(engine) as db:
                 template = service.import_platform_template(

@@ -13,7 +13,8 @@ export function errorText(e: unknown): string {
   const d = err?.detail;
   if (typeof d === "string") return d;
   if (d && typeof d === "object") {
-    const o = d as { message?: string; code?: string; fields?: Record<string, string> };
+    const o = d as { message?: string; code?: string; fields?: Record<string, string>; errors?: string[] };
+    if (Array.isArray(o.errors) && o.errors.length) return o.errors.slice(0, 5).join("; ");
     if (o.fields) return Object.entries(o.fields).map(([k, v]) => `${k}: ${v}`).join("; ");
     if (o.message) return o.message;
     if (o.code) return o.code;

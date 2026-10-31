@@ -9,6 +9,7 @@ Refuses a database that already holds the demo organization. The generated passw
 only to docs/demo/DMS_DEMO_ACCESS.md (git-ignored) and is never printed.
 """
 
+import os
 import secrets
 import sys
 from pathlib import Path
@@ -27,13 +28,17 @@ from app.db.models import Role
 from app.db.session import get_engine
 from app.db.tenant_session import tenant_session
 from app.main import app
+from app.platform_admin import grant as grant_platform_admin
 from app.services import rbac
 from app.services.tenants import provision_tenant
+from app.ui.seed import seed_directory
 from tests.samples import make_docx, make_pdf, make_xlsx
 
 ORG = "Demo Industries"
 DOMAIN = "demo.dms.test"
-ACCESS_FILE = ROOT.parents[1] / "docs" / "demo" / "DMS_DEMO_ACCESS.md"
+ACCESS_FILE = Path(
+    os.environ.get("DEMO_ACCESS_FILE") or ROOT.parents[1] / "docs" / "demo" / "DMS_DEMO_ACCESS.md"
+)
 WEB_URL = "http://localhost:5173"
 API_URL = "http://localhost:8000"
 
@@ -255,7 +260,7 @@ local demo database. Never reuse this password anywhere else.
 {rows}
 
 ## What each role can do
-- **Organization Administrator**: everything, including users, roles, categories, organization, audit, hold and deletion approval.
+- **Organization Administrator**: everything, including users, roles, categories, organization, audit, hold and deletion approval. Also a *platform administrator*: sees the **Design catalogue** screen.
 - **Department Manager (Finance)**: sees Finance documents (including confidential ones), reviews and archives.
 - **Project Manager (Apollo ERP Rollout)**: sees Apollo project documents, reviews and archives; has a shared invoice.
 - **Employee**: uploads, edits own documents, shares, requests deletion.
@@ -273,12 +278,21 @@ Tenant id: `{tenant_id}`
     )
 
 
+def seed_designs() -> None:
+    """Publish the five designs and make the demo administrator a platform administrator."""
+    report = seed_directory(ROOT.parents[1] / "design-showcase" / "templates")
+    assert not report["failed"], report["failed"]
+    with Session(get_engine()) as db, db.begin():
+        grant_platform_admin(db, f"{PEOPLE['admin'][0]}@{DOMAIN}")
+
+
 def main() -> None:
     guard()
     password = "Demo-" + secrets.token_urlsafe(12) + "9!"
     world = create_people(password)
     with TestClient(app) as client:
         result = seed(Api(client, password), world)
+    seed_designs()
     write_access_file(password, result["tenant_id"])
     print(
         f"Seeded {ORG}: {len(result['docs'])} documents, {len(PEOPLE)} accounts. Access file written."

@@ -45,3 +45,13 @@ Scene text lives in the `scenes` array of the script; edit it and re-run (speech
 - Preview and download are described, not clicked: they open the file in a new browser tab, which the recorder does not capture.
 - Subtitles are one cue per scene (the same convention as the CRM videos), so each caption is a full paragraph.
 - Narration pronounces the product name as letters ("D M S") on purpose.
+
+## Video 02: choose your design (Sprints T0-T5)
+
+`videos/02-dms-choose-your-design.mp4` (about 3.5 minutes, 11 scenes) with `.srt`, `.vtt` and `.csv` beside it, recorded by `videos/record-appearance.mjs`. It shows: the default design, the Appearance page, previewing a design without saving, applying it, a colleague with a different design in the same organization, the choice following a person to a new sign-in, the platform administrator's Design catalogue refusing an unsafe file, importing and publishing a sixth design (Forest Calm) with no redeployment, a person choosing it, and reset to default.
+
+**Shared pipeline:** both recorders now use `videos/lib.mjs` (speech, timing, mixing, subtitles, narration CSV, frame extraction), so there is one copy of that logic. The first video's recorder was reduced to its scenes; it has **not** been re-run since that change.
+
+**Regenerate:** use a fresh demo database as described above (the seed now also publishes the five designs and makes the demo administrator a platform administrator), start the demo (`start_demo.bat`), then `node videos/record-appearance.mjs`. Environment overrides: `DMS_WEB_URL`, `DEMO_ACCESS_FILE`.
+
+**Limits:** voice and subtitle conventions are the same as video 01 (Windows voice, one caption per scene); the dashboard and reports designs are mentioned as future, not shown; I looked at 3 of the 11 verification frames, not all.

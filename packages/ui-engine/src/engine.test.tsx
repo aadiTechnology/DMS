@@ -5,7 +5,7 @@ import { renderToString } from "react-dom/server";
 import { forwardRef } from "react";
 import { describe, expect, it } from "vitest";
 import {
-  LayoutRenderer, SYSTEM_TEMPLATE, TemplateProvider, buildMuiTheme, cssVariables, readCachedTemplate, resolveAppearance,
+  LayoutRenderer, SYSTEM_TEMPLATE, TemplateProvider, TemplateThumbnail, buildMuiTheme, cssVariables, readCachedTemplate, resolveAppearance,
   resolveDashboard, uiTemplateSchema, validateTemplate, writeCachedTemplate, type UiTemplate,
 } from "./index";
 
@@ -204,5 +204,16 @@ describe("layout renderer", () => {
     );
     expect(html).not.toContain("<img src=x");
     expect(html).toContain("&lt;img");
+  });
+});
+
+describe("template thumbnail", () => {
+  it("draws a preview for every shipped template using that template's colors", () => {
+    for (const t of shipped) {
+      const html = renderToString(<TemplateThumbnail template={t} />);
+      expect(html).toContain('data-testid="template-thumbnail"');
+      expect(html).toContain('aria-hidden="true"');
+      expect(html.toLowerCase()).toContain(t.theme.colors.primary.toLowerCase());
+    }
   });
 });

@@ -125,7 +125,7 @@ def list_available(db: Session, tenant_id, product_code: str = PRODUCT_CODE) -> 
                 UiTemplate.status == "published",
                 or_(UiTemplate.tenant_id.is_(None), UiTemplate.tenant_id == tenant_id),
             )
-            .order_by(UiTemplate.template_name, UiTemplate.id)
+            .order_by(UiTemplate.created_at, UiTemplate.id)  # the order they were added
         )
     )
 

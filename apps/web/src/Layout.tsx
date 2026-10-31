@@ -3,7 +3,9 @@ import AccountCircle from "@mui/icons-material/AccountCircle";
 import ApartmentIcon from "@mui/icons-material/Apartment";
 import ArticleIcon from "@mui/icons-material/Article";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
+import BrushIcon from "@mui/icons-material/Brush";
 import FolderIcon from "@mui/icons-material/Folder";
+import PaletteIcon from "@mui/icons-material/Palette";
 import ShareIcon from "@mui/icons-material/Share";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { Box, Button, List, ListItemButton, ListItemText, Typography } from "@mui/material";
@@ -19,6 +21,8 @@ const TITLES: [string, string][] = [
   ["/approvals", "Approvals"],
   ["/shared", "Shared"],
   ["/organization", "Organization"],
+  ["/appearance", "Appearance"],
+  ["/platform/designs", "Design catalogue"],
   ["/account", "Account"],
   ["/documents", "Documents"],
 ];
@@ -50,6 +54,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const canUpload = useCan("document.upload");
+  const platform = useQuery({ queryKey: ["platform-admin"], queryFn: () => api<{ is_platform_admin: boolean }>("/me/platform-admin") });
   const queue = useQuery({ queryKey: ["approvals", "queue"], queryFn: () => api<unknown[]>("/approvals/queue") });
   const waiting = queue.data?.length ? ` (${queue.data.length})` : "";
   const items: (NavItem & { show: boolean })[] = [
@@ -58,6 +63,8 @@ export default function Layout({ children }: { children: ReactNode }) {
     { to: "/approvals", label: `Approvals${waiting}`, icon: <FactCheckIcon />, show: true },
     { to: "/shared", label: "Shared", icon: <ShareIcon />, show: true },
     { to: "/organization", label: "Organization", icon: <ApartmentIcon />, show: true },
+    { to: "/appearance", label: "Appearance", icon: <PaletteIcon />, show: true },
+    { to: "/platform/designs", label: "Design catalogue", icon: <BrushIcon />, show: platform.data?.is_platform_admin === true },
     { to: "/account", label: "Account", icon: <AccountCircle />, show: true },
   ];
   return (

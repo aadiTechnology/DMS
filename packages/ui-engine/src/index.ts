@@ -10,3 +10,4 @@ export type { ResolvedDashboard, ResolvedWidget } from "./widgets";
 export { TemplateProvider, useTemplate } from "./TemplateProvider";
 export { LayoutRenderer } from "./LayoutRenderer";
 export type { LayoutRendererProps, NavItem } from "./LayoutRenderer";
+export { TemplateThumbnail } from "./TemplateThumbnail";

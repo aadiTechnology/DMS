@@ -11,6 +11,9 @@ describe("errorText", () => {
   it("prefers a message over a code", () => {
     expect(errorText({ detail: { code: "stale", message: "Someone added a newer version" } })).toBe("Someone added a newer version");
   });
+  it("lists the problems found in an uploaded design", () => {
+    expect(errorText({ detail: { errors: ["theme.colors.primary: must match pattern", "name: invalid"] } })).toBe("theme.colors.primary: must match pattern; name: invalid");
+  });
   it("lists validation problems", () => {
     expect(errorText({ detail: [{ msg: "field required" }] })).toBe("field required");
   });

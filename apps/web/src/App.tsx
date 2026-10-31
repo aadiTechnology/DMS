@@ -3,10 +3,13 @@ import {
 } from "@aaditech/ui-engine";
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { APPEARANCE_KEY, PreviewBanner, PreviewContext, type Preview } from "./appearance";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { api, getSession, signedOut } from "./api";
 import Layout from "./Layout";
 import Account from "./pages/Account";
+import Appearance from "./pages/Appearance";
+import DesignCatalogue from "./pages/DesignCatalogue";
 import Approvals from "./pages/Approvals";
 import DocumentDetail from "./pages/DocumentDetail";
 import Documents from "./pages/Documents";
@@ -19,9 +22,6 @@ const PermissionContext = createContext<Set<string>>(new Set());
 export const usePermissions = () => useContext(PermissionContext);
 export const useCan = (code: string) => usePermissions().has(code);
 
-/** Query key of the signed-in person's design preference; invalidate it after changing the choice. */
-export const APPEARANCE_KEY = ["ui-preferences"] as const;
-
 const storage = typeof localStorage === "undefined" ? undefined : localStorage;
 
 function Authenticated() {
@@ -31,6 +31,18 @@ function Authenticated() {
     queryKey: APPEARANCE_KEY,
     queryFn: () => api<{ effective: EffectiveAnswer }>("/me/ui-preferences"),
   });
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const previewState = useMemo(
+    () => ({
+      preview,
+      start: (id: string, template: unknown) => {
+        setPreview({ id, template: template as Preview["template"] });
+        return null;
+      },
+      stop: () => setPreview(null),
+    }),
+    [preview],
+  );
   const cached = useMemo(() => readCachedTemplate(storage, email), [email]);
   const appearance = preference.data
     ? resolveAppearance(preference.data.effective, cached)
@@ -43,7 +55,9 @@ function Authenticated() {
   }, [preference.data, appearance.source, appearance.template, email]);
 
   return (
-    <TemplateProvider template={appearance.template}>
+    <PreviewContext.Provider value={previewState}>
+    <TemplateProvider template={preview?.template ?? appearance.template}>
+      <PreviewBanner />
       {permissions.isLoading ? null : (
         <PermissionContext.Provider value={new Set(permissions.data?.permissions ?? [])}>
           <Layout>
@@ -55,6 +69,8 @@ function Authenticated() {
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/shared" element={<Shared />} />
               <Route path="/organization" element={<Organization />} />
+              <Route path="/appearance" element={<Appearance />} />
+              <Route path="/platform/designs" element={<DesignCatalogue />} />
               <Route path="/account" element={<Account />} />
               <Route path="*" element={<Navigate to="/documents" replace />} />
             </Routes>
@@ -62,6 +78,7 @@ function Authenticated() {
         </PermissionContext.Provider>
       )}
     </TemplateProvider>
+    </PreviewContext.Provider>
   );
 }
 
