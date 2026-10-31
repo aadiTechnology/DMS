@@ -24,3 +24,13 @@ Thumbs.db
 # local dev object storage
 .storage/
 services/api/.storage/
+
+# local demo credentials
+docs/demo/DMS_DEMO_ACCESS.md
+
+# demo videos and recorder work files (large binaries)
+videos/*.mp4
+videos/.work/
+videos/verification/
+
+videos/.record.log

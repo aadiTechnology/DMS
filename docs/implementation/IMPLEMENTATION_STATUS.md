@@ -296,3 +296,16 @@ Live test `tests/test_storage_b2_live.py` run by the owner against a dedicated p
 **Deployment readiness (same session, at the owner's request):** Coolify/Linux support added: `services/api/Dockerfile`, `docker-entrypoint.sh`, `docker-compose.coolify.yml`, `.env.coolify.example`, `.gitattributes`, `app/jobs.py` (scheduled maintenance), `docs/deployment/COOLIFY_DEPLOYMENT.md`. Checked locally: image builds, runs as non-root, migrates an empty database to head, health check OK, production settings refusal, compose validation, job command. Not run on a real Coolify server.
 
 **Tests executed (observed):** 13 lifecycle tests and 3 job tests passing; migration drift test passing; full suite `uv run pytest -q`: 346 passed, 2 skipped (live B2), started before the 3 job tests were added; those were run separately (3 passed). `ruff` clean.
+
+## Sprint W1: Web application foundation (done; owner approval pending after video review)
+**Why now:** the owner asked to pause backend work and build screens for what exists, so the product can be browsed and a walkthrough recorded.
+
+**Changed:** `apps/web` (React 18, TypeScript, Vite, MUI 6, TanStack Query; a development proxy sends `/api` to the API), demo seed `services/api/scripts/seed_demo.py`, recorder and login check in `videos/`, `start_demo.bat`, `docs/demo/*`. No API behavior changed.
+
+**Screens:** sign-in (with verification-code step and forgot password), document library (search, category, classification and status filters, paging), document detail (metadata, versions with preview/download, retention, approval history, shared-with, archive and restore), upload (category-driven fields, department and project, validation messages), approvals queue (review dialog, approve, reject with reason), shared with me / by me, organization (departments, branches, projects, designations, employee directory for administrators), account (roles' permissions, two-step status).
+
+**Not in W1:** sharing creation, new-version upload and restore screens, metadata editing, legal hold and deletion screens, user/role/category/organization administration, audit viewer, reports and dashboards, notifications, change-password and two-step setup screens, Hindi/Marathi text, mobile layout, production hosting of the web app (the Coolify files cover the API only).
+
+**Tests executed (observed):** web type-check and production build pass; 5 unit tests pass; browser login of all 6 demo accounts PASS; a full narrated recording ran through 13 scenes and the MP4 decodes. Backend suite unchanged (346 passed at Sprint 17).
+
+**Bugs found while recording and fixed:** the upload form read category policy from the wrong place (the approval notice did not appear); two selector ambiguities in the recorder.

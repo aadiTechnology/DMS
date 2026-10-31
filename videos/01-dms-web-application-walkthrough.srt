@@ -1,0 +1,51 @@
+1
+00:00:00,000 --> 00:00:28,460
+This is the new D M S web application. It is a multi tenant document management system for small and medium organizations. Every person belongs to one organization, and sees only what their role and each document allow. This walkthrough uses a fictional organization called Demo Industries, with sample documents. You will sign in as an employee, a reviewer, an administrator, a department manager and a project manager.
+
+2
+00:00:28,923 --> 00:00:50,994
+Sameer is an employee in the Finance department. He signs in with his work email and password. The password is typed into a masked field. After sign in, the document library opens. It lists only the documents Sameer is allowed to see, with the category, classification, status, version and size of each.
+
+3
+00:00:51,449 --> 00:01:10,930
+Search looks through titles, file names, metadata and the text inside documents. Searching for acme finds the invoice and the vendor agreement. The classification filter narrows results further, and counts are calculated only over documents Sameer may see, so nothing leaks through the numbers.
+
+4
+00:01:11,388 --> 00:01:33,169
+Opening a document shows its details. The invoice carries the metadata its category requires, such as the invoice number and vendor, the date until which it must be kept, and its version history. Preview and download are separate rights. Each issues a short lived secure link, and every download is recorded in the audit log.
+
+5
+00:01:33,629 --> 00:01:56,474
+Now Sameer uploads a contract. He chooses the Contracts category, picks the file, and the form asks for what that category requires: a department and a contract reference. The category is configured so that documents are reviewed before release, and the form says so. The file is checked for its real type and scanned before it is stored.
+
+6
+00:01:56,926 --> 00:02:17,052
+Meera is a reviewer. After she signs in, the menu shows how many approvals are waiting for her. She opens the new service agreement, reads the history, and approves it with a comment. A rejection would require a reason. Nobody can approve their own upload, and every decision is recorded.
+
+7
+00:02:17,509 --> 00:02:40,009
+Asha is the organization administrator. Her library includes documents others cannot see, such as the highly confidential salary letters, and archived documents. Administrator access to restricted documents is an audited privilege, so every use leaves a record. Filtering by status shows the archived remote work guidelines.
+
+8
+00:02:40,473 --> 00:03:04,628
+Documents have a lifecycle. An approved document can be archived, which keeps it readable but closed to new versions and edits, and an archived document can be restored. Categories also define how long a document must be kept and when it should be reviewed. Legal holds and approved deletion already work in the system programming interface, and will get screens in a later release.
+
+9
+00:03:05,090 --> 00:03:23,686
+The organization page shows the departments, branches, projects and designations that documents are filed against, and the employee directory. Access rules use this structure. For example, confidential finance documents are visible to the Finance department and to its manager.
+
+10
+00:03:24,141 --> 00:03:44,257
+The account page lists exactly what the signed in person is allowed to do. Roles grant actions, such as upload, approve or archive. Whether a person can open one particular document is decided separately, from its classification, its owner, its department and project, and any direct sharing.
+
+11
+00:03:44,720 --> 00:04:04,265
+Rohan manages the Finance department. He sees the confidential finance documents for his department, including invoices and contracts, because the access policy gives department managers visibility into their own department. He does not see the salary letters, which belong to Human Resources.
+
+12
+00:04:04,726 --> 00:04:25,792
+Priya manages the Apollo project. An employee shared the Acme invoice with her directly, with permission to view and download. The shared page lists what has been shared with you and what you have shared with others. Sharing can expire, can be withdrawn at any time, and never gives more than the person role already allows.
+
+13
+00:04:26,244 --> 00:04:57,472
+This first release of the web application covers sign in, the document library with search and filters, document details with versions and retention, upload with validation, approvals, sharing lists, lifecycle archiving, the organization directory, and role based permissions. Still to come are the screens for sharing and uploading new versions, administration of users and categories, reports and dashboards, and notifications. Thank you for watching.
