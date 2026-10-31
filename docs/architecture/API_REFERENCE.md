@@ -93,6 +93,13 @@ Category policy fields: `approval_required`, `required_dimensions` (department, 
 | PUT `/me/ui-preferences` | signed in | Body `{"template_id": uuid\|null}`; null resets. Affects only your own account; the choice persists across sessions and devices |
 | GET/PUT `/ui-templates/tenant-default` | admin.manage_organization | The organization's default design for people who have not chosen |
 
+| GET `/me/platform-admin` | signed in | `{is_platform_admin}`; lets the web app show the template management screen |
+| POST `/platform/ui-templates/validate` | platform administrator | Body: the template JSON (max 64 KB). Returns `valid`, error list, the template's name and description, and whether its key and version are `new_template`, `new_version` or `conflict`. Saves nothing |
+| POST `/platform/ui-templates/import?publish=false` | platform administrator | Body: the template JSON. 201 with the saved draft (or published template). 422 `{errors: [...]}` when invalid, 409 when that version already exists or is older, 413 over 64 KB |
+| GET `/platform/ui-templates?status=` | platform administrator | All platform templates in every status |
+| GET `/platform/ui-templates/{id}`, GET `.../versions` | platform administrator | Full configuration; version history with publish times |
+| POST `/platform/ui-templates/{id}/publish`, `/archive` | platform administrator | Publish makes it available to every organization at once; archive withdraws it (an archived template cannot be published again, import a new version). Both are audited as privileged |
+
 Categories accept `policy.approval_steps` (list of `{type: user|role|department_manager, ref}`), only together with `approval_required`.
 
 Login with MFA on: `POST /auth/login` answers `401 {"detail":{"code":"mfa_required"}}` after a correct password; resend with `mfa_code` (authenticator or recovery code). Wrong codes count toward lockout.

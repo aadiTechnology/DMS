@@ -35,3 +35,26 @@ Files over 64 KB are refused on the server before parsing. Validation never thro
 Importing: `python -m app.ui.seed <folder>` (from `services/api`) validates each file, stores it and publishes it; re-running skips versions already stored. A higher version of an existing key is stored as a new version and, if imported without publishing, waits as a draft while the old version stays live. The same or an older version is refused.
 
 What a person sees is decided in this order: their own valid choice, the organization default, the product default (`UI_DEFAULT_TEMPLATE_KEY`, default `modern-enterprise`), then the built-in system theme. A template that is unpublished, archived, from another organization, or no longer valid is skipped, never applied.
+
+## Platform administrators and publishing (Sprint T3)
+
+**Who:** a platform administrator is an ordinary user account listed in `platform_admins`. The list is changed **only** by an operator command, never through the web or API (the database roles used by the application cannot write it):
+
+```
+cd services/api
+uv run python -m app.platform_admin grant person@example.com
+uv run python -m app.platform_admin revoke person@example.com
+uv run python -m app.platform_admin list
+```
+
+On a Coolify server run the same command in the `api` container's terminal. The last active administrator cannot be revoked. Access is checked on every request, so revoking takes effect immediately. When `PLATFORM_ADMIN_REQUIRE_MFA` is true (the default in production) an administrator must have two-step verification turned on.
+
+**Importing a new design (no rebuild or redeployment):**
+1. Generate the JSON file (see the next section), then check it: `POST /platform/ui-templates/validate` shows errors, the name and description, and whether the key and version are new.
+2. `POST /platform/ui-templates/import` saves it as a **draft**. Drafts are invisible to organizations.
+3. `POST /platform/ui-templates/{id}/publish` makes it appear in everyone's design list immediately.
+4. `POST /platform/ui-templates/{id}/archive` withdraws an old design. People who chose it fall back to the next design in the chain.
+
+A new version of an existing key is stored in `ui_template_versions`; the live version stays unchanged until the new one is published. The same or an older version is refused.
+
+**Asking Claude for a new design:** give it `packages/ui-engine/schema/ui-template.schema.json` and one of the files in `design-showcase/templates/` as the example, ask for a JSON file only (a new `key`, `name`, `description` and `version`), then run it through the validate call before importing. Only values allowed by the schema will be accepted.

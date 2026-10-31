@@ -312,9 +312,8 @@ def test_organizations_cannot_write_the_catalogue(catalogue):
                 "INSERT INTO ui_template_versions(template_id, version, config_json) SELECT id, '9.9.9', '{}' FROM ui_templates LIMIT 1"
             )
         )
-    with pytest.raises(DBAPIError):
-        with platform_session(env.engine) as db:  # the platform role has no access to tenant data
-            db.execute(text("SELECT count(*) FROM user_ui_preferences")).scalar()
+    with pytest.raises(DBAPIError), platform_session(env.engine) as db:  # no access to tenant data
+        db.execute(text("SELECT count(*) FROM user_ui_preferences")).scalar()
 
 
 # ---- import rules -----------------------------------------------------------------------

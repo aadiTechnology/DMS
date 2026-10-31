@@ -43,6 +43,7 @@ TABLES = {
     "ui_template_versions",
     "user_ui_preferences",
     "tenant_ui_defaults",
+    "platform_admins",
 }
 
 

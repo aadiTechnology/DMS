@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     API_BASE_URL: str = "http://localhost:8000"
     # Template used when neither the person nor the organization has chosen one.
     UI_DEFAULT_TEMPLATE_KEY: str = "modern-enterprise"
+    # Platform administrators must have two-step verification on. None means: required in production only.
+    PLATFORM_ADMIN_REQUIRE_MFA: bool | None = None
     DMS_B2_KEY_ID: str = ""
     DMS_B2_APP_KEY: SecretStr = SecretStr("")
     DMS_B2_BUCKET_NAME: str = ""

@@ -327,3 +327,12 @@ Live test `tests/test_storage_b2_live.py` run by the owner against a dedicated p
 **Not done yet:** the platform admin concept, import/publish/archive over the API (the underlying functions exist and are tested), web rendering and the Appearance page.
 
 **Tests executed (observed):** 21 new tests (seeding, visibility of drafts/archived, per-user choice in one tenant, persistence across a new sign-in, reset, fallback order, damaged template skipped, organization isolation, tenant-only templates, organizations cannot write the catalogue, import version rules); migration and drift tests pass; `ruff` clean; full backend suite: 442 passed, 2 skipped (live Backblaze), 0 failed.
+
+## Sprint T3: Platform Administrator and template management (done)
+**Changed:** migration `0016` (`platform_admins`), operator command `python -m app.platform_admin`, `app/api/platform_ui.py` (validate, import, list, get, versions, publish, archive, "am I an administrator"), setting `PLATFORM_ADMIN_REQUIRE_MFA`. Docs: `UI_TEMPLATE_SCHEMA.md` (publishing and how to ask Claude for a design), API reference.
+
+**Decision (simple terms):** a small list of people (the Platform Administrators) may add, publish and withdraw designs for everyone. The list can only be changed by an operator running a command on the server, never from the web, and the last administrator cannot be removed. Their rights are checked on every request, so removing someone takes effect at once. In production they must also have two-step verification on. Everything they do is recorded in the audit log of their own organization, flagged privileged. An uploaded design goes in as a draft, can be checked first without saving, and only appears to people when published; a new version of an existing design keeps the old versions on record. **Decision taken (your approval):** platform administrator concept as recommended.
+
+**Tests executed (observed):** 12 new platform tests (authorization, immediate revocation, MFA rule, operator command rules, application roles cannot change the list, import to publish to a sixth design visible to a user without redeploy, version history and unique keys, invalid and oversized uploads, tenant-owned templates out of scope, audit); full backend suite 454 passed, 2 skipped (live Backblaze), 0 failed; `ruff` clean.
+
+**Not done yet:** applying designs in the web app (T4), the Appearance page and a template import screen (T5).

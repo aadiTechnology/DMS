@@ -12,6 +12,7 @@ from app.api import (
     mfa,
     onboarding,
     org,
+    platform_ui,
     rbac,
     search,
     shares,
@@ -38,6 +39,7 @@ app.include_router(approvals.router)
 app.include_router(shares.router)
 app.include_router(lifecycle.router)
 app.include_router(ui_templates.router)
+app.include_router(platform_ui.router)
 app.include_router(search.router)
 if dev_storage_enabled(get_settings()):
     app.include_router(dev_storage.router)

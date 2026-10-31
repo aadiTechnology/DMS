@@ -1021,3 +1021,16 @@ class TenantUiDefault(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
     )
     updated_at: Mapped[datetime] = created_at_col()
+
+
+class PlatformAdmin(Base):
+    """Users who may manage the shared UI template catalogue. Changed only by an operator command."""
+
+    __tablename__ = "platform_admins"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), primary_key=True
+    )
+    granted_by: Mapped[str] = mapped_column(String(200), nullable=False, server_default="command")
+    created_at: Mapped[datetime] = created_at_col()
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
