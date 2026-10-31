@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     STORAGE_PROVIDER: Literal["local", "backblaze"] = "local"
     STORAGE_LOCAL_DIR: str = ".storage"
     API_BASE_URL: str = "http://localhost:8000"
+    # Template used when neither the person nor the organization has chosen one.
+    UI_DEFAULT_TEMPLATE_KEY: str = "modern-enterprise"
     DMS_B2_KEY_ID: str = ""
     DMS_B2_APP_KEY: SecretStr = SecretStr("")
     DMS_B2_BUCKET_NAME: str = ""

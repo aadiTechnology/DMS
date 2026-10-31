@@ -933,3 +933,91 @@ class DeletionRequest(Base):
     )
     decision_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class UiTemplate(Base):
+    """A design template (configuration JSON). Platform templates have no tenant; only the
+    dms_platform role writes them. See docs/architecture/UI_TEMPLATE_SCHEMA.md."""
+
+    __tablename__ = "ui_templates"
+    __table_args__ = (
+        CheckConstraint("status IN ('draft','published','archived')", name="status"),
+        CheckConstraint(
+            "(scope = 'platform' AND tenant_id IS NULL) OR (scope = 'tenant' AND tenant_id IS NOT NULL)",
+            name="scope",
+        ),
+        Index("uq_ui_templates_platform_key", "product_code", "template_key", unique=True, postgresql_where=text("tenant_id IS NULL")),
+        Index("uq_ui_templates_tenant_key", "tenant_id", "product_code", "template_key", unique=True, postgresql_where=text("tenant_id IS NOT NULL")),
+        Index("ix_ui_templates_product_code_status", "product_code", "status"),
+    )  # fmt: skip
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), nullable=True
+    )
+    product_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    template_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    template_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    description: Mapped[str] = mapped_column(String(300), nullable=False, server_default="")
+    config_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    preview_image_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    version: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="draft")
+    scope: Mapped[str] = mapped_column(String(20), nullable=False, server_default="platform")
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    created_at: Mapped[datetime] = created_at_col()
+    updated_at: Mapped[datetime] = created_at_col()
+
+
+class UiTemplateVersion(Base):
+    """Every imported version of a template, kept for history."""
+
+    __tablename__ = "ui_template_versions"
+    __table_args__ = (UniqueConstraint("template_id", "version"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    template_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ui_templates.id", ondelete="RESTRICT"), nullable=False
+    )
+    version: Mapped[str] = mapped_column(String(20), nullable=False)
+    config_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = created_at_col()
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class UserUiPreference(Base):
+    """One row per person, organization and product; template_id NULL means use the default."""
+
+    __tablename__ = "user_ui_preferences"
+    __table_args__ = (UniqueConstraint("tenant_id", "user_id", "product_code"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    product_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    template_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ui_templates.id", ondelete="RESTRICT"), nullable=True
+    )
+    updated_at: Mapped[datetime] = created_at_col()
+
+
+class TenantUiDefault(Base):
+    """The organization's approved default design (second step of the fallback chain)."""
+
+    __tablename__ = "tenant_ui_defaults"
+    __table_args__ = (UniqueConstraint("tenant_id", "product_code"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    product_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    template_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ui_templates.id", ondelete="RESTRICT"), nullable=True
+    )
+    set_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    updated_at: Mapped[datetime] = created_at_col()

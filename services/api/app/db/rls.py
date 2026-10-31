@@ -7,9 +7,17 @@ A transaction without a tenant context matches no rows (deny by default).
 
 APP_ROLE = "dms_app"
 AUTH_ROLE = "dms_auth"
+PLATFORM_ROLE = (
+    "dms_platform"  # writes platform-wide data (UI templates); never used for tenant work
+)
 TENANT_SETTING = "app.tenant_id"
 
 _CURRENT_TENANT = f"nullif(current_setting('{TENANT_SETTING}', true), '')::uuid"
+
+
+def tenant_predicate() -> str:
+    """SQL expression for the current transaction's tenant id (NULL when none is set)."""
+    return _CURRENT_TENANT
 
 
 def enable_tenant_rls_sql(table: str, column: str = "tenant_id") -> list[str]:

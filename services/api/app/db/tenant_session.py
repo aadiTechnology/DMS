@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.db.rls import APP_ROLE, AUTH_ROLE, TENANT_SETTING
+from app.db.rls import APP_ROLE, AUTH_ROLE, PLATFORM_ROLE, TENANT_SETTING
 from app.db.session import get_engine
 
 
@@ -34,6 +34,16 @@ def auth_session(engine=None) -> Iterator[Session]:
     factory = sessionmaker(bind=engine or get_engine(), expire_on_commit=False)
     with factory() as session, session.begin():
         session.execute(text(f"SET LOCAL ROLE {AUTH_ROLE}"))
+        yield session
+
+
+@contextmanager
+def platform_session(engine=None) -> Iterator[Session]:
+    """Transaction for platform-wide data (UI template catalogue). Runs as dms_platform, which has
+    no access to any tenant's data. Callers must already have checked that the caller is allowed."""
+    factory = sessionmaker(bind=engine or get_engine(), expire_on_commit=False)
+    with factory() as session, session.begin():
+        session.execute(text(f"SET LOCAL ROLE {PLATFORM_ROLE}"))
         yield session
 
 

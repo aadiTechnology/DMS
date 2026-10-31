@@ -318,3 +318,12 @@ Live test `tests/test_storage_b2_live.py` run by the owner against a dedicated p
 **Tests executed (observed):** `@aaditech/ui-engine` 64 passed; server `tests/test_ui_template_schema.py` 72 passed; existing web build and tests unchanged and passing; `ruff` clean. The 49 shared invalid cases include HTML in names, CSS and URL injection in colors, `javascript:` and `data:` preview images, unknown fonts and variants, out-of-range numbers, extra properties, prototype-pollution keys, oversized and non-JSON input.
 
 **Not done yet:** database tables and APIs (T2), Platform Administrator and template management (T3), rendering (T4), user selection (T5). The backend suite was not re-run in full for this sprint; no existing backend file changed except dependency metadata.
+
+## Sprint T2: UI template storage and user APIs (done)
+**Changed:** migration `0015` (four tables, new database role `dms_platform`), `app/ui/service.py`, `app/ui/seed.py`, `app/api/ui_templates.py`, `platform_session()` in `tenant_session.py`, setting `UI_DEFAULT_TEMPLATE_KEY`, models, router. Documentation in `UI_TEMPLATE_SCHEMA.md`, API reference and database design.
+
+**Decision (simple terms):** the five designs now live in the database, not in the web code. Every person picks their own design and it follows them to any device; two people in the same organization can use different designs. An organization administrator may also set a default for people who have not chosen. If a chosen design is withdrawn or damaged, the person silently falls back to the next one in the chain. Designs can be loaded from a folder by an operator command; the Platform Administrator screens and APIs come in T3. **Decision taken on your behalf (recommended option):** the extra `tenant_ui_defaults` table for the organization default.
+
+**Not done yet:** the platform admin concept, import/publish/archive over the API (the underlying functions exist and are tested), web rendering and the Appearance page.
+
+**Tests executed (observed):** 21 new tests (seeding, visibility of drafts/archived, per-user choice in one tenant, persistence across a new sign-in, reset, fallback order, damaged template skipped, organization isolation, tenant-only templates, organizations cannot write the catalogue, import version rules); migration and drift tests pass; `ruff` clean; full backend suite: 442 passed, 2 skipped (live Backblaze), 0 failed.

@@ -87,6 +87,12 @@ Category policy fields: `approval_required`, `required_dimensions` (department, 
 | POST `/deletion-requests/{id}/approve` / `reject` / `cancel` | approve_delete (not the requester) / approve_delete, `reason` required / requester | Approve removes the files (502 if storage is down; nothing changes). 403 for your own request |
 | GET `/lifecycle/due?days=30` | document.archive | Documents with retention ending or review due within `days` |
 
+| GET `/ui-templates/available` | signed in | Published designs you may choose (platform templates and your organization's own), with `is_selected` and `is_default` flags. Drafts and archived designs are never listed |
+| GET `/ui-templates/available/{id}` | signed in | One design with its full configuration, for previewing. 404 if not published or not yours |
+| GET `/me/ui-preferences` | signed in | Your saved choice and `effective`: `{source: user\|tenant\|product\|system, template}` (template is null for the built-in theme) |
+| PUT `/me/ui-preferences` | signed in | Body `{"template_id": uuid\|null}`; null resets. Affects only your own account; the choice persists across sessions and devices |
+| GET/PUT `/ui-templates/tenant-default` | admin.manage_organization | The organization's default design for people who have not chosen |
+
 Categories accept `policy.approval_steps` (list of `{type: user|role|department_manager, ref}`), only together with `approval_required`.
 
 Login with MFA on: `POST /auth/login` answers `401 {"detail":{"code":"mfa_required"}}` after a correct password; resend with `mfa_code` (authenticator or recovery code). Wrong codes count toward lockout.

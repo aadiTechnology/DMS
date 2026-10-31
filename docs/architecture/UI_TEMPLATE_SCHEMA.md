@@ -22,3 +22,16 @@ A UI template is a small JSON document that describes a look and layout. It is d
 Widget ids: welcome, stat-documents, stat-pending, stat-shared, stat-storage, chart-uploads, chart-classification, recent-documents, approvals-queue, activity, expiring-soon.
 
 Files over 64 KB are refused on the server before parsing. Validation never throws for bad input and never changes it.
+
+## Storage and access (Sprint T2)
+
+| Table | Holds | Who can touch it |
+|---|---|---|
+| `ui_templates` | One row per template: key, name, description, current `config_json` (JSONB), version, status (draft, published, archived), scope (platform or tenant) | Organizations can only **read** published platform templates and their own tenant templates. Only the `dms_platform` database role writes. |
+| `ui_template_versions` | Every imported version of a template, with its publish time | `dms_platform` only (organizations cannot read it) |
+| `user_ui_preferences` | One row per organization, person and product; `template_id` empty means "use the default" | The person's own organization (row-level security); the API only changes the signed-in person's row |
+| `tenant_ui_defaults` | The organization's approved default design | Same; changed with `admin.manage_organization` |
+
+Importing: `python -m app.ui.seed <folder>` (from `services/api`) validates each file, stores it and publishes it; re-running skips versions already stored. A higher version of an existing key is stored as a new version and, if imported without publishing, waits as a draft while the old version stays live. The same or an older version is refused.
+
+What a person sees is decided in this order: their own valid choice, the organization default, the product default (`UI_DEFAULT_TEMPLATE_KEY`, default `modern-enterprise`), then the built-in system theme. A template that is unpublished, archived, from another organization, or no longer valid is skipped, never applied.

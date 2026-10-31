@@ -39,6 +39,10 @@ TABLES = {
     "approval_events",
     "legal_holds",
     "deletion_requests",
+    "ui_templates",
+    "ui_template_versions",
+    "user_ui_preferences",
+    "tenant_ui_defaults",
 }
 
 

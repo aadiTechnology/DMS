@@ -17,6 +17,7 @@ from app.api import (
     shares,
     sso,
     taxonomy,
+    ui_templates,
     versions,
 )
 from app.core.config import get_settings
@@ -36,6 +37,7 @@ app.include_router(versions.router)
 app.include_router(approvals.router)
 app.include_router(shares.router)
 app.include_router(lifecycle.router)
+app.include_router(ui_templates.router)
 app.include_router(search.router)
 if dev_storage_enabled(get_settings()):
     app.include_router(dev_storage.router)
