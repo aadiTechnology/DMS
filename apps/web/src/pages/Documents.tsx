@@ -1,7 +1,7 @@
 import { useTemplate } from "@aaditech/ui-engine";
 import SearchIcon from "@mui/icons-material/Search";
 import {
-  Alert, Box, Button, Card, CardActionArea, CardContent, Chip, InputAdornment, MenuItem, Paper, Stack, Table, TableBody,
+  Alert, Box, Button, Card, CardActionArea, CardContent, Chip, ToggleButton, ToggleButtonGroup, InputAdornment, MenuItem, Paper, Stack, Table, TableBody,
   TableCell, TableHead, TablePagination, TableRow, TextField, Typography,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
@@ -39,6 +39,8 @@ export default function Documents() {
   const [category, setCategory] = useState(params.get("category") ?? "");
   const [classification, setClassification] = useState("");
   const [status, setStatus] = useState("");
+  const [mine, setMine] = useState(false);
+  const me = useQuery({ queryKey: ["me"], queryFn: () => api<{ user_id: string }>("/auth/me"), staleTime: 300_000 });
   const [page, setPage] = useState(0);
   const rows = 10;
 
@@ -51,10 +53,10 @@ export default function Documents() {
   }, [params]);
 
   const result = useQuery({
-    queryKey: ["search", q, category, classification, status, page],
+    queryKey: ["search", q, category, classification, status, page, mine],
     queryFn: () =>
       api<Result>("/search", {
-        params: { q, category_id: category, classification, status, limit: rows, offset: page * rows, sort: q ? "relevance" : "date" },
+        params: { q, category_id: category, classification, status, uploader_id: mine ? me.data?.user_id : undefined, limit: rows, offset: page * rows, sort: q ? "relevance" : "date" },
       }),
   });
   const reset = <T,>(set: (v: T) => void) => (v: T) => {
@@ -158,6 +160,10 @@ export default function Documents() {
       <Typography variant="h5" sx={{ mb: 2 }}>
         Documents
       </Typography>
+      <ToggleButtonGroup exclusive size="small" value={mine ? "mine" : "all"} onChange={(_, v) => { if (v) { setMine(v === "mine"); setPage(0); } }} sx={{ mb: 2 }} aria-label="Which documents">
+        <ToggleButton value="all">All documents</ToggleButton>
+        <ToggleButton value="mine" disabled={!me.data}>Uploaded by me</ToggleButton>
+      </ToggleButtonGroup>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack
           direction={{ xs: "column", md: "row" }}

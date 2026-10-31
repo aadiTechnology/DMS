@@ -43,6 +43,14 @@ export default function Approvals() {
     },
     onError: (e) => setError(errorText(e)),
   });
+  const note = useMutation({
+    mutationFn: () => api(`/approvals/${open}/comments`, { body: { comment } }),
+    onSuccess: async () => {
+      setComment("");
+      await client.invalidateQueries({ queryKey: ["approval", open] });
+    },
+    onError: (e) => setError(errorText(e)),
+  });
   const close = () => {
     setOpen(null);
     setComment("");
@@ -96,6 +104,7 @@ export default function Approvals() {
         </DialogContent>
         <DialogActions>
           <Button onClick={close}>Close</Button>
+          <Button disabled={!comment.trim() || note.isPending} onClick={() => note.mutate()}>Add comment only</Button>
           <Button color="error" disabled={!comment.trim() || !detail.data?.can_decide} onClick={() => decide.mutate("reject")}>Reject</Button>
           <Button variant="contained" disabled={!detail.data?.can_decide} onClick={() => decide.mutate("approve")}>Approve</Button>
         </DialogActions>

@@ -7,7 +7,7 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import UnarchiveIcon from "@mui/icons-material/Unarchive";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import {
-  Alert, Box, Button, Chip, Divider, Paper, Stack, Tab, Table, TableBody, TableCell, TableHead, TableRow, Tabs, Typography,
+  Alert, Box, Button, Chip, Divider, Paper, Stack, Tab, TextField, Table, TableBody, TableCell, TableHead, TableRow, Tabs, Typography,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +20,7 @@ import { classTone, date, dateTime, label, size, stateTone } from "../format";
 import EditDetailsDialog from "../components/EditDetailsDialog";
 import NewVersionDialog from "../components/NewVersionDialog";
 import PreviewDialog from "../components/PreviewDialog";
+import ReasonDialog from "../components/ReasonDialog";
 import ShareDialog from "../components/ShareDialog";
 import { categoryName, useCategories } from "../queries";
 
@@ -51,7 +52,7 @@ interface Lifecycle {
   retention_until: string | null;
   review_due_on: string | null;
   legal_hold: { reason: string } | null;
-  deletion_request: { status: string } | null;
+  deletion_request: { id: string; status: string; reason: string; requested_by_user_id: string } | null;
 }
 interface Request {
   id: string;
@@ -77,7 +78,12 @@ export default function DocumentDetail() {
   const canShare = useCan("document.share");
   const canAddVersion = useCan("document.upload_version");
   const canEdit = useCan("document.edit_metadata");
+  const canHold = useCan("document.approve_delete");
+  const canRequestDelete = useCan("document.request_delete");
+  const canUpload = useCan("document.upload");
   const [dialog, setDialog] = useState<"share" | "version" | "edit" | null>(null);
+  const [reasonFor, setReasonFor] = useState<"hold" | "release" | "delete" | null>(null);
+  const [comments, setComments] = useState<Record<string, string>>({});
   const [previewing, setPreviewing] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [tab, setTab] = useState(0);
@@ -94,6 +100,29 @@ export default function DocumentDetail() {
     onError: (e) => setMessage(errorText(e)),
   });
 
+  const me = useQuery({ queryKey: ["me"], queryFn: () => api<{ user_id: string }>("/auth/me") });
+  const refreshDoc = () => client.invalidateQueries({ queryKey: ["doc", id] });
+  const comment = useMutation({
+    mutationFn: (v: { requestId: string; text: string }) => api(`/approvals/${v.requestId}/comments`, { body: { comment: v.text } }),
+    onSuccess: async (_d, v) => {
+      setComments((c) => ({ ...c, [v.requestId]: "" }));
+      await refreshDoc();
+    },
+    onError: (e) => setMessage(errorText(e)),
+  });
+  const resubmit = useMutation({
+    mutationFn: () => api(`/documents/${id}/resubmit`, { method: "POST" }),
+    onSuccess: async () => {
+      setMessage("Sent for review again. The earlier decisions stay on record.");
+      await refreshDoc();
+    },
+    onError: (e) => setMessage(errorText(e)),
+  });
+  const cancelDeletion = useMutation({
+    mutationFn: (requestId: string) => api(`/deletion-requests/${requestId}/cancel`, { method: "POST" }),
+    onSuccess: refreshDoc,
+    onError: (e) => setMessage(errorText(e)),
+  });
   const restore = useMutation({
     mutationFn: (n: number) => api(`/documents/${id}/versions/${n}/restore`, { body: { based_on_version: Math.max(...(doc.data?.versions.map((v) => v.version_number) ?? [0])) } }),
     onSuccess: async (_d, n) => {
@@ -182,6 +211,15 @@ export default function DocumentDetail() {
             {dateTime(e.created_at)} — {label(e.action)}{e.comment ? `: ${e.comment}` : ""}
           </Typography>
         ))}
+        {r.status === "pending" && (
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+            <TextField size="small" fullWidth placeholder="Add a comment for the reviewers" value={comments[r.id] ?? ""} onChange={(e) => setComments({ ...comments, [r.id]: e.target.value })} inputProps={{ "aria-label": "Review comment", maxLength: 1000 }} />
+            <Button size="small" variant="outlined" disabled={!(comments[r.id] ?? "").trim() || comment.isPending} onClick={() => comment.mutate({ requestId: r.id, text: comments[r.id]! })}>Comment</Button>
+          </Stack>
+        )}
+        {r.status === "rejected" && r.id === reviews.data?.[0]?.id && canUpload && d.lifecycle_state === "rejected" && (
+          <Button size="small" variant="contained" sx={{ mt: 1 }} disabled={resubmit.isPending} onClick={() => resubmit.mutate()}>Send for review again</Button>
+        )}
         <Divider sx={{ mt: 1 }} />
       </Box>
     ))}
@@ -199,6 +237,31 @@ export default function DocumentDetail() {
       ))}
     </Paper>
   ) : null;
+  const deletion = life.data?.deletion_request ?? null;
+  const lifecycleCard =
+    life.data && d.lifecycle_state !== "deleted" ? (
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }} gutterBottom>Retention and disposal</Typography>
+        {life.data.legal_hold ? (
+          <Alert severity="warning" sx={{ mb: 1 }}>Legal hold: {life.data.legal_hold.reason}. The document cannot be deleted until the hold is released.</Alert>
+        ) : (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>No legal hold. {life.data.retention_until ? `It must be kept until ${date(life.data.retention_until)}.` : "No keep-until date is set."}</Typography>
+        )}
+        {deletion && (
+          <Alert severity="info" sx={{ mb: 1 }}>
+            Deletion requested: “{deletion.reason}”. A second person with approval rights decides.
+            {deletion.requested_by_user_id === me.data?.user_id && (
+              <Button size="small" sx={{ ml: 1 }} onClick={() => cancelDeletion.mutate(deletion.id)}>Withdraw request</Button>
+            )}
+          </Alert>
+        )}
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {canHold && !life.data.legal_hold && <Button size="small" onClick={() => setReasonFor("hold")}>Place legal hold</Button>}
+          {canHold && life.data.legal_hold && <Button size="small" onClick={() => setReasonFor("release")}>Release legal hold</Button>}
+          {canRequestDelete && !deletion && <Button size="small" color="error" onClick={() => setReasonFor("delete")}>Request deletion</Button>}
+        </Stack>
+      </Paper>
+    ) : null;
   const stack = (...parts: (JSX.Element | null)[]) => <Stack spacing={2}>{parts.map((part, i) => <Fragment key={i}>{part}</Fragment>)}</Stack>;
   const tabs = ["Overview", "Versions", "Approvals", "Sharing"];
 
@@ -222,13 +285,13 @@ export default function DocumentDetail() {
       </Stack>
       {message && <Alert severity="info" sx={{ mb: 2 }} onClose={() => setMessage("")}>{message}</Alert>}
       {layout === "stacked" ? (
-        stack(detailsCard, versionsCard, approvalCard, sharesCard)
+        stack(detailsCard, versionsCard, approvalCard, sharesCard, lifecycleCard)
       ) : layout === "tabbed" ? (
         <>
           <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
             {tabs.map((x) => <Tab key={x} label={x} />)}
           </Tabs>
-          {tab === 0 && detailsCard}
+          {tab === 0 && stack(detailsCard, lifecycleCard)}
           {tab === 1 && versionsCard}
           {tab === 2 && approvalCard}
           {tab === 3 && (sharesCard ?? <Typography color="text.secondary">Sharing details are not visible to you.</Typography>)}
@@ -236,12 +299,36 @@ export default function DocumentDetail() {
       ) : (
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 7 }}>{stack(detailsCard, versionsCard)}</Grid>
-          <Grid size={{ xs: 12, md: 5 }}>{stack(approvalCard, sharesCard)}</Grid>
+          <Grid size={{ xs: 12, md: 5 }}>{stack(approvalCard, sharesCard, lifecycleCard)}</Grid>
         </Grid>
       )}
       <ShareDialog documentId={d.id} title={d.title} open={dialog === "share"} onClose={() => setDialog(null)} />
       <NewVersionDialog documentId={d.id} basedOn={Math.max(...d.versions.map((v) => v.version_number), 0)} open={dialog === "version"} onClose={() => setDialog(null)} />
       <EditDetailsDialog doc={d} open={dialog === "edit"} onClose={() => setDialog(null)} />
+      <ReasonDialog
+        open={reasonFor === "hold"}
+        title="Place a legal hold"
+        description="While a hold is on, this document cannot be deleted. The reason is recorded."
+        confirmLabel="Place hold"
+        onSubmit={async (reason) => { await api(`/documents/${id}/legal-hold`, { body: { reason } }); await refreshDoc(); }}
+        onClose={() => setReasonFor(null)}
+      />
+      <ReasonDialog
+        open={reasonFor === "release"}
+        title="Release the legal hold"
+        confirmLabel="Release hold"
+        onSubmit={async (reason) => { await api(`/documents/${id}/legal-hold`, { method: "DELETE", body: { reason } }); await refreshDoc(); }}
+        onClose={() => setReasonFor(null)}
+      />
+      <ReasonDialog
+        open={reasonFor === "delete"}
+        title="Request deletion"
+        description="A second person with approval rights must approve before anything is removed. It is refused while a legal hold applies or the keep-until date has not passed."
+        confirmLabel="Send request"
+        danger
+        onSubmit={async (reason) => { await api(`/documents/${id}/deletion-requests`, { body: { reason } }); await refreshDoc(); }}
+        onClose={() => setReasonFor(null)}
+      />
       <PreviewDialog documentId={d.id} version={previewing ?? 1} open={previewing !== null} onClose={() => setPreviewing(null)} />
     </Box>
   );

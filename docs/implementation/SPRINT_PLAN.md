@@ -16,13 +16,13 @@ Status on 2026-10-31. Backend: Sprints 0-17 done and tested (346 passed). Web: S
 | 8 | Categories, metadata fields, tags | Done | None (used in upload and filters) | Category and tag admin screens, approval-step setup |
 | 9 | Upload and security scan | Done | Done | In-page upload progress for large files (hardening) |
 | 10 | Document library, search, filters | Done | Done | "My documents", more filters (department, project, tag, dates) |
-| 11 | Document detail, preview, download | Done | Partial: opens in new tab | In-page preview |
-| 12 | Edit title, metadata, tags | Done | None | Edit dialog |
-| 13 | Versions (add, restore, history) | Done | Partial: history only | Add version, restore |
+| 11 | Document detail, preview, download | Done | Done (preview opens inside the page) | None |
+| 12 | Edit title, metadata, tags | Done | Partial: title and extra fields | Tag editing |
+| 13 | Versions (add, restore, history) | Done | Done | None |
 | 14 | Classification and access rules | Done | Done (applied everywhere) | None |
-| 15 | Approvals | Done | Partial: queue, approve, reject | Comments, resubmit, administrator overview |
-| 16 | Sharing | Done | Partial: lists | Share dialog, change, revoke |
-| 17 | Retention, archive, legal hold, deletion | Done | Partial: archive/restore, dates shown | Hold, deletion request and approval screens, due list |
+| 15 | Approvals | Done | Partial: queue, decisions, comments, resubmit | Administrator overview of all pending reviews |
+| 16 | Sharing | Done | Done (share dialog, revoke, lists) | None |
+| 17 | Retention, archive, legal hold, deletion | Done | Done (archive, hold, deletion request and approval, due list) | None |
 | 18 | Audit log | Done | None | Audit viewer |
 | 19 | Search index administration | Done | None | Status screen |
 | 20 | Notifications (in-app, email, digest, reminders) | None | None | Backend and web |
