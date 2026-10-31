@@ -14,7 +14,9 @@ import Approvals from "./pages/Approvals";
 import DocumentDetail from "./pages/DocumentDetail";
 import Documents from "./pages/Documents";
 import Login from "./pages/Login";
+import Activity from "./pages/Activity";
 import Organization from "./pages/Organization";
+import People from "./pages/People";
 import Retention from "./pages/Retention";
 import Shared from "./pages/Shared";
 import Upload from "./pages/Upload";
@@ -70,6 +72,8 @@ function Authenticated() {
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/shared" element={<Shared />} />
               <Route path="/organization" element={<Organization />} />
+              <Route path="/people" element={<People />} />
+              <Route path="/activity" element={<Activity />} />
               <Route path="/retention" element={<Retention />} />
               <Route path="/appearance" element={<Appearance />} />
               <Route path="/platform/designs" element={<DesignCatalogue />} />

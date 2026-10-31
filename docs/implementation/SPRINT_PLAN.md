@@ -10,8 +10,8 @@ Status on 2026-10-31. Backend: Sprints 0-17 done and tested (346 passed). Web: S
 | 2 | Google / Microsoft sign-in | Done (needs OAuth client ids from owner) | None | Sign-in buttons |
 | 3 | Two-step verification | Done | None | Setup, enable, disable, recovery codes screens |
 | 4 | Password change (signed in) | None | None | Small API addition and screen |
-| 5 | Users, invitations, registration requests | Done | None | Admin screens |
-| 6 | Roles and permissions | Done | Partial: shows my permissions | Role assignment screens |
+| 5 | Users, invitations, registration requests | Done | Done (People: employees, invitations, join requests, two-step reset) | None |
+| 6 | Roles and permissions | Done | Done (People: give and remove roles; your own permissions page) | None |
 | 7 | Organization (departments, branches, projects, designations, employees) | Done | Partial: read-only lists | Create/edit, managers, project members, profiles |
 | 8 | Categories, metadata fields, tags | Done | None (used in upload and filters) | Category and tag admin screens, approval-step setup |
 | 9 | Upload and security scan | Done | Done | In-page upload progress for large files (hardening) |
@@ -23,8 +23,8 @@ Status on 2026-10-31. Backend: Sprints 0-17 done and tested (346 passed). Web: S
 | 15 | Approvals | Done | Partial: queue, decisions, comments, resubmit | Administrator overview of all pending reviews |
 | 16 | Sharing | Done | Done (share dialog, revoke, lists) | None |
 | 17 | Retention, archive, legal hold, deletion | Done | Done (archive, hold, deletion request and approval, due list) | None |
-| 18 | Audit log | Done | None | Audit viewer |
-| 19 | Search index administration | Done | None | Status screen |
+| 18 | Audit log | Done | Done (Activity: filter by action and date, names shown) | None |
+| 19 | Search index administration | Done | Done (Activity: counts, process queue, retry failed) | None |
 | 20 | Notifications (in-app, email, digest, reminders) | None | None | Backend and web |
 | 21 | Dashboards and reports (CSV / XLSX) | None | None | Backend and web |
 | 22 | Storage usage metering and billing ledger | None | None | Backend and web |

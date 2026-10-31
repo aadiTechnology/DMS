@@ -381,3 +381,14 @@ Live test `tests/test_storage_b2_live.py` run by the owner against a dedicated p
 **Note:** the retention dates in that check were set directly in the database to create the situations quickly. The due-soon tab shows what was current when it was last opened; reloading refreshes it.
 
 **Remaining on the web (Sprint plan W2b, W2c):** administration (users, roles, categories, organization editing, audit viewer, index status), account pages (invitation, reset, registration, SSO buttons, two-step setup, password change), tag editing, administrator overview of all pending reviews.
+
+## Sprint W2b, part 1: People and Activity screens (done)
+**Changed (web only, no backend change):** **People** (employees with their roles; give or take away roles in a dialog; **Reset two-step** for a lost device; **Invitations** with invite, resend and withdraw; **Join requests** with approve and reject and a switch to allow people to ask to join), **Activity** (audit log with names, filter by action and date, paging; **Search index** health with process-the-queue and retry-failed). Menu items appear only for people holding the matching permission.
+
+**Decision (simple terms):** an administrator can now run the people side of the organization entirely from the browser. The "keep at least one administrator" rule is enforced by the server and shown as a clear message. Withdrawn invitations leave an inactive record, by design (employee history is never deleted).
+
+**Tests executed (observed):** browser check `videos/check-admin-screens.mjs` 16 of 16 passed on a throwaway database (deleted): no People or Activity screen for an ordinary employee; roles given and removed; last administrator protected; two-step reset; invitation sent, resent and withdrawn; self-registration switched on, a request arrives and is approved with an invitation; audit log shows names and filters; search index processed. Web 6, engine 96, shared 3 passed; builds green. No backend change.
+
+**Learned while testing:** the invitation form refuses reserved test domains such as `.test` (real email domains work); the demo accounts were created directly, so they are unaffected.
+
+**Remaining in W2b (part 2):** categories and tags (create, edit, approval steps, retention, required fields) and editing the organization structure (departments, branches, projects, designations, managers, project members, profiles).

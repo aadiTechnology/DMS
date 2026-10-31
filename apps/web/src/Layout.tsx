@@ -6,6 +6,8 @@ import FactCheckIcon from "@mui/icons-material/FactCheck";
 import BrushIcon from "@mui/icons-material/Brush";
 import FolderIcon from "@mui/icons-material/Folder";
 import EventNoteIcon from "@mui/icons-material/EventNote";
+import HistoryIcon from "@mui/icons-material/History";
+import PeopleIcon from "@mui/icons-material/People";
 import PaletteIcon from "@mui/icons-material/Palette";
 import ShareIcon from "@mui/icons-material/Share";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
@@ -22,6 +24,8 @@ const TITLES: [string, string][] = [
   ["/approvals", "Approvals"],
   ["/shared", "Shared"],
   ["/organization", "Organization"],
+  ["/people", "People"],
+  ["/activity", "Activity"],
   ["/retention", "Retention"],
   ["/appearance", "Appearance"],
   ["/platform/designs", "Design catalogue"],
@@ -57,6 +61,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const canUpload = useCan("document.upload");
   const canArchive = useCan("document.archive");
+  const canPeople = useCan("admin.manage_users");
+  const canActivity = useCan("admin.view_audit") || useCan("admin.manage_organization");
   const canDecideDeletion = useCan("document.approve_delete");
   const platform = useQuery({ queryKey: ["platform-admin"], queryFn: () => api<{ is_platform_admin: boolean }>("/me/platform-admin") });
   const queue = useQuery({ queryKey: ["approvals", "queue"], queryFn: () => api<unknown[]>("/approvals/queue") });
@@ -67,6 +73,8 @@ export default function Layout({ children }: { children: ReactNode }) {
     { to: "/approvals", label: `Approvals${waiting}`, icon: <FactCheckIcon />, show: true },
     { to: "/shared", label: "Shared", icon: <ShareIcon />, show: true },
     { to: "/organization", label: "Organization", icon: <ApartmentIcon />, show: true },
+    { to: "/people", label: "People", icon: <PeopleIcon />, show: canPeople },
+    { to: "/activity", label: "Activity", icon: <HistoryIcon />, show: canActivity },
     { to: "/retention", label: "Retention", icon: <EventNoteIcon />, show: canArchive || canDecideDeletion },
     { to: "/appearance", label: "Appearance", icon: <PaletteIcon />, show: true },
     { to: "/platform/designs", label: "Design catalogue", icon: <BrushIcon />, show: platform.data?.is_platform_admin === true },
