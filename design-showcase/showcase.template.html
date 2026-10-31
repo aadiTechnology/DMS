@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DMS Design Showcase</title>
+<style>
+/* ===== Showcase chrome (not part of any design) ===== */
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:"Segoe UI",system-ui,sans-serif;background:#1b1f2a}
+#picker{height:56px;display:flex;align-items:center;gap:10px;padding:0 16px;background:#0f1320;color:#dfe5f5;border-bottom:1px solid #2a3145}
+#picker b{font-size:15px;margin-right:8px;white-space:nowrap}
+#picker button{border:1px solid #333c57;background:#171d30;color:#cfd7ee;padding:7px 12px;border-radius:8px;cursor:pointer;font:inherit;font-size:13px;display:flex;gap:8px;align-items:center}
+#picker button[aria-pressed=true]{background:#e8edff;color:#10172b;border-color:#e8edff;font-weight:600}
+#picker i{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.3)}
+#picker .sp{flex:1}
+#stage{height:calc(100vh - 56px);overflow:hidden;position:relative}
+#jsonpane{position:absolute;right:0;top:0;bottom:0;width:420px;background:#0b0f1a;color:#b9c6f0;font:12px/1.5 Consolas,monospace;padding:14px;overflow:auto;display:none;z-index:50;border-left:1px solid #2a3145;white-space:pre}
+#jsonpane.on{display:block}
+
+/* ===== Design tokens (set from the template JSON) ===== */
+#app{--primary:#1d4ed8;--secondary:#0ea5e9;--bg:#f3f6fb;--surface:#fff;--text:#0f172a;--text2:#475569;--border:#e2e8f0;
+--success:#15803d;--warning:#b45309;--error:#b91c1c;--info:#0369a1;--radius:6px;--shadow:none;--font:system-ui;--scale:1;--gap:24px;--sw:248px;
+--row-pad:10px;--ctl-h:36px;--card-pad:18px;--hw:600;--tint:color-mix(in srgb,var(--primary) 10%,transparent);--tint2:color-mix(in srgb,var(--primary) 18%,transparent);
+height:100%;display:flex;flex-direction:column;background:var(--bg);color:var(--text);font-family:var(--font);font-size:calc(14px*var(--scale));overflow:auto;transition:background .2s}
+#app *{box-sizing:border-box}
+#app[data-density=compact]{--row-pad:4px;--ctl-h:28px;--card-pad:12px}
+#app[data-density=spacious]{--row-pad:16px;--ctl-h:44px;--card-pad:28px}
+#app h1,#app h2,#app h3{margin:0;font-weight:var(--hw)}
+#app h1{font-size:1.65em}#app h2{font-size:1.2em}#app h3{font-size:1em}
+#app .muted{color:var(--text2)}#app .small{font-size:.86em}
+#app a{color:var(--primary);text-decoration:none}
+#app svg.ic{width:1.25em;height:1.25em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#app .row{display:flex;align-items:center;gap:10px}#app .between{justify-content:space-between}#app .grow{flex:1;min-width:0}
+#app .stack{display:flex;flex-direction:column;gap:var(--gap)}
+
+/* ===== Shell ===== */
+#app .shell{flex:1;display:grid;min-height:0}
+#app .main{display:flex;flex-direction:column;min-width:0;min-height:0}
+#app .page{padding:var(--gap);overflow:auto;flex:1}
+#app[data-width=contained] .page>.inner{max-width:1180px;margin:0 auto}
+#app[data-width=narrow] .page>.inner{max-width:900px;margin:0 auto}
+#app .side{display:flex;flex-direction:column;gap:6px;padding:14px 10px;background:var(--surface);border-right:1px solid var(--border)}
+#app .brand{display:flex;align-items:center;gap:10px;font-weight:700;padding:6px 10px 14px;font-size:1.1em}
+#app .logo{width:30px;height:30px;border-radius:calc(var(--radius) + 2px);background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:800;font-size:.9em}
+#app .nav{display:flex;flex-direction:column;gap:2px}
+#app .nav a{display:flex;align-items:center;gap:12px;padding:calc(var(--row-pad) - 1px) 12px;border-radius:var(--radius);color:var(--text2);cursor:pointer;font-weight:500}
+#app .nav a:hover{background:var(--tint)}
+#app .nav a.on{background:var(--tint2);color:var(--primary);font-weight:600}
+#app .navsec{font-size:.72em;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);padding:12px 12px 4px;opacity:.8}
+#app .userbox{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid var(--border)}
+#app .av{width:30px;height:30px;border-radius:50%;background:var(--secondary);color:#fff;display:grid;place-items:center;font-size:.8em;font-weight:700;flex:none}
+#app .head{display:flex;align-items:center;gap:14px;padding:12px var(--gap);background:var(--surface);border-bottom:1px solid var(--border)}
+#app .searchbox{display:flex;align-items:center;gap:8px;flex:1;max-width:520px;height:var(--ctl-h);padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);background:var(--bg)}
+#app .iconbtn{width:var(--ctl-h);height:var(--ctl-h);display:grid;place-items:center;border-radius:var(--radius);color:var(--text2);position:relative}
+#app .iconbtn .dot{position:absolute;top:6px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--error)}
+
+/* sidebar variants */
+#app[data-sidebar=full] .shell{grid-template-columns:var(--sw) 1fr}
+#app[data-sidebar=floating] .shell{grid-template-columns:calc(var(--sw) + 16px) 1fr;padding:16px 16px 16px 0}
+#app[data-sidebar=floating]{background:linear-gradient(160deg,var(--bg),color-mix(in srgb,var(--secondary) 10%,var(--bg)))}
+#app[data-sidebar=floating] .side{margin:0 0 0 16px;border:0;border-radius:calc(var(--radius) + 6px);box-shadow:var(--shadow);height:100%}
+#app[data-sidebar=floating] .main{background:transparent}
+#app[data-sidebar=floating] .head{background:transparent;border:0}
+#app[data-sidebar=floating] .nav a.on{background:linear-gradient(120deg,var(--primary),color-mix(in srgb,var(--primary) 55%,var(--secondary)));color:#fff;box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 35%,transparent)}
+#app[data-sidebar=rail-tree] .shell{grid-template-columns:64px 236px 1fr}
+#app[data-sidebar=rail-tree] .side{align-items:center;padding:10px 6px;background:#17323a;border:0;color:#bcd2d6}
+#app[data-sidebar=rail-tree] .side .brand{padding:6px 0 10px}
+#app[data-sidebar=rail-tree] .nav a{padding:10px;justify-content:center;color:#a8c3c8;border-radius:var(--radius)}
+#app[data-sidebar=rail-tree] .nav a span{display:none}
+#app[data-sidebar=rail-tree] .nav a.on{background:rgba(255,255,255,.14);color:#fff}
+#app[data-sidebar=rail-tree] .userbox{border:0;padding:6px 0}
+#app[data-sidebar=top] .shell{grid-template-columns:1fr}
+#app[data-sidebar=top] .side{display:none}
+#app[data-sidebar=full][data-mode=dark] .side{background:linear-gradient(180deg,#0e1730,#0a1020)}
+#app .tree{background:var(--surface);border-right:1px solid var(--border);padding:12px 8px;overflow:auto;display:none}
+#app[data-sidebar=rail-tree] .tree{display:block}
+#app .tree .t{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius);color:var(--text);cursor:pointer;font-size:.95em}
+#app .tree .t:hover{background:var(--tint)}#app .tree .t.on{background:var(--tint2);color:var(--primary);font-weight:600}
+#app .tree .l1{padding-left:22px}#app .tree .l2{padding-left:38px}
+#app .tree .cnt{margin-left:auto;color:var(--text2);font-size:.85em}
+#app .topnav{display:none;align-items:center;gap:4px;padding:18px var(--gap) 6px;max-width:1000px;margin:0 auto;width:100%}
+#app[data-sidebar=top] .topnav{display:flex;flex-wrap:nowrap}
+#app .topnav .brand{padding:0 24px 0 0}
+#app .topnav a{padding:6px 8px;white-space:nowrap;color:var(--text2);cursor:pointer;border-bottom:1.5px solid transparent;font-size:.95em}
+#app .topnav a.on{color:var(--text);border-color:var(--text)}
+#app .topnav .sp{flex:1}
+
+/* ===== Component variants ===== */
+#app .card{background:var(--surface);border-radius:var(--radius);padding:var(--card-pad);min-width:0}
+#app[data-card=outlined] .card{border:1px solid var(--border)}
+#app[data-card=elevated] .card{box-shadow:var(--shadow)}
+#app[data-card=flat] .card{background:transparent;padding-left:0;padding-right:0;border-bottom:1px solid var(--border);border-radius:0}
+#app[data-card=glass] .card{background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid var(--border);box-shadow:var(--shadow);backdrop-filter:blur(6px)}
+#app[data-card=gradient] .card{background:linear-gradient(150deg,var(--surface) 55%,color-mix(in srgb,var(--primary) 7%,var(--surface)));border:1px solid var(--border);box-shadow:var(--shadow)}
+#app .card>h3,#app .cardh{margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+#app .btn{display:inline-flex;align-items:center;gap:8px;height:var(--ctl-h);padding:0 16px;border-radius:var(--radius);border:1px solid transparent;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+#app[data-button=solid] .btn.p,#app[data-button=pill] .btn.p{background:var(--primary);color:var(--surface);color:#fff}
+#app[data-button=pill] .btn{border-radius:999px}
+#app[data-button=pill] .btn.p{background:linear-gradient(120deg,var(--primary),color-mix(in srgb,var(--primary) 60%,var(--secondary)));box-shadow:0 6px 14px color-mix(in srgb,var(--primary) 30%,transparent)}
+#app[data-button=soft] .btn.p{background:var(--tint2);color:var(--primary)}
+#app[data-button=outline] .btn.p{background:transparent;color:var(--text);border-color:var(--text)}
+#app .btn.g{background:transparent;color:var(--text2);border-color:var(--border)}
+#app[data-button=soft] .btn.g{background:var(--tint);border-color:transparent;color:var(--text)}
+#app .btn.d{background:transparent;color:var(--error);border-color:color-mix(in srgb,var(--error) 40%,transparent)}
+#app .btn.ok{background:var(--success);color:#fff}
+#app[data-button=outline] .btn.ok{background:transparent;color:var(--success);border-color:var(--success)}
+#app[data-button=soft] .btn.ok{background:color-mix(in srgb,var(--success) 18%,transparent);color:var(--success)}
+#app table{width:100%;border-collapse:collapse}
+#app th{text-align:left;font-weight:600;color:var(--text2);font-size:.82em;text-transform:uppercase;letter-spacing:.04em;padding:var(--row-pad) 12px}
+#app td{padding:var(--row-pad) 12px;vertical-align:middle}
+#app[data-table=zebra] tbody tr:nth-child(even){background:color-mix(in srgb,var(--primary) 4%,transparent)}
+#app[data-table=zebra] thead th{border-bottom:2px solid var(--border)}
+#app[data-table=zebra] tbody tr:hover{background:var(--tint)}
+#app[data-table=plain] td,#app[data-table=plain] th{border-bottom:1px solid color-mix(in srgb,var(--border) 55%,transparent)}
+#app[data-table=lined] td{border-bottom:1px solid var(--border)}
+#app[data-table=lined] tbody tr:hover{background:rgba(255,255,255,.04)}
+#app[data-table=dense] td,#app[data-table=dense] th{border:1px solid var(--border);padding:var(--row-pad) 8px}
+#app[data-table=dense] thead th{background:color-mix(in srgb,var(--primary) 7%,var(--surface))}
+#app[data-table=dense] tbody tr:hover{background:var(--tint)}
+#app .tw{overflow:auto}
+#app .field{display:flex;flex-direction:column;gap:5px;min-width:0}
+#app .field label{font-size:.82em;color:var(--text2);font-weight:600}
+#app .inp,#app select.inp{height:var(--ctl-h);padding:0 12px;font:inherit;color:var(--text);width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);outline:none}
+#app textarea.inp{height:auto;padding:10px 12px}
+#app[data-input=filled] .inp{background:var(--tint);border-color:transparent;border-bottom:1.5px solid var(--border)}
+#app[data-input=underline] .inp{border:0;border-bottom:1px solid var(--text2);border-radius:0;padding-left:0;background:transparent}
+#app[data-dropdown=filled] select.inp{background:var(--tint)}
+#app[data-dropdown=underline] select.inp{border:0;border-bottom:1px solid var(--text2);border-radius:0;padding-left:0;background:transparent}
+#app select.inp option{color:#111}
+#app .inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--tint)}
+#app .tabs{display:flex;gap:4px;margin-bottom:16px}
+#app .tabs a{padding:8px 14px;cursor:pointer;color:var(--text2);font-weight:600}
+#app[data-tabs=underline] .tabs{border-bottom:1px solid var(--border)}
+#app[data-tabs=underline] .tabs a{border-bottom:2px solid transparent;margin-bottom:-1px}
+#app[data-tabs=underline] .tabs a.on{color:var(--primary);border-color:var(--primary)}
+#app[data-tabs=pills] .tabs a{border-radius:999px}
+#app[data-tabs=pills] .tabs a.on{background:var(--tint2);color:var(--primary)}
+#app[data-tabs=segmented] .tabs{background:var(--tint);padding:4px;border-radius:calc(var(--radius) + 4px);width:max-content}
+#app[data-tabs=segmented] .tabs a{border-radius:var(--radius)}
+#app[data-tabs=segmented] .tabs a.on{background:var(--surface);color:var(--primary);box-shadow:var(--shadow)}
+#app .badge{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:.82em;font-weight:600;white-space:nowrap}
+#app .badge{--c:var(--info)}
+#app .b-ok{--c:var(--success)}#app .b-wait{--c:var(--warning)}#app .b-bad{--c:var(--error)}#app .b-info{--c:var(--info)}#app .b-grey{--c:var(--text2)}
+#app[data-badge=soft] .badge{background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
+#app[data-badge=filled] .badge{background:var(--c);color:#fff;border-radius:var(--radius)}
+#app[data-badge=outlined] .badge{border:1px solid var(--c);color:var(--c);border-radius:var(--radius)}
+#app[data-badge=dot] .badge{color:var(--text);background:color-mix(in srgb,var(--c) 10%,transparent)}
+#app[data-badge=dot] .badge::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c)}
+#app .scrim{position:absolute;inset:0;background:rgba(5,10,25,.5);display:grid;place-items:center;z-index:20}
+#app .dialog{background:var(--surface);width:480px;max-width:92%;padding:24px;display:flex;flex-direction:column;gap:14px;border-radius:var(--radius);box-shadow:0 20px 50px rgba(0,0,0,.35)}
+#app[data-dialog=rounded] .dialog{border-radius:24px;border:1px solid var(--border)}
+#app[data-dialog=flat] .dialog{box-shadow:none;border:1px solid var(--text)}
+#app .chip{padding:4px 12px;border:1px solid var(--border);border-radius:999px;cursor:pointer;font-size:.9em;color:var(--text2);background:var(--surface)}
+#app .chip.on{background:var(--tint2);color:var(--primary);border-color:transparent;font-weight:600}
+#app .ftile{width:38px;height:44px;border-radius:calc(var(--radius) - 1px);display:grid;place-items:center;font-size:.72em;font-weight:800;color:#fff;flex:none;background:var(--primary)}
+#app .t-pdf{background:#c0392b}#app .t-docx{background:#2b6cb0}#app .t-xlsx{background:#2f855a}#app .t-pptx{background:#c05621}#app .t-png{background:#6b46c1}
+#app .bar{height:8px;background:var(--tint);border-radius:99px;overflow:hidden}#app .bar>i{display:block;height:100%;background:var(--primary);border-radius:99px}
+
+/* ===== Dashboard ===== */
+#app .dgrid{display:grid;gap:var(--gap)}
+#app .stat{display:flex;flex-direction:column;gap:6px;justify-content:center}
+#app .stat .n{font-size:2em;font-weight:var(--hw);line-height:1.1}
+#app .stat .lab{color:var(--text2);display:flex;align-items:center;gap:8px;font-weight:600}
+#app .delta{font-size:.85em;color:var(--success);font-weight:600}#app .delta.dn{color:var(--error)}
+#app[data-dl=focus-list] .dgrid .card{background:transparent;border:0;box-shadow:none;border-bottom:1px solid var(--border);border-radius:0;padding-left:0;padding-right:0}
+#app[data-dl=focus-list] .stat .n{font-size:2.8em;font-weight:400}
+#app[data-dl=focus-list] .hello{font-size:2.3em;font-weight:400;line-height:1.2;padding:20px 0 10px}
+#app[data-dl=dark-hero] .hero{background:linear-gradient(135deg,#1f2f66,#2a3f86 45%,color-mix(in srgb,var(--secondary) 55%,#1f2f66));color:#fff;border:0;position:relative;overflow:hidden}
+#app[data-dl=dark-hero] .hero::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(242,184,75,.45),transparent 70%)}
+#app[data-dl=dense-grid] .dgrid{gap:10px}
+#app[data-dl=dense-grid] .stat .n{font-size:1.6em}
+#app .hero h1{font-size:1.8em;margin-bottom:6px}
+#app .list{display:flex;flex-direction:column}
+#app .li{display:flex;align-items:center;gap:12px;padding:var(--row-pad) 0;border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+#app .li:last-child{border:0}
+#app .legend{display:flex;flex-direction:column;gap:6px;font-size:.9em}
+#app .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px}
+#app .kv{display:grid;grid-template-columns:140px 1fr;gap:10px 16px}
+#app .kv dt{color:var(--text2)}#app .kv dd{margin:0}
+#app .steps{display:flex;gap:0;align-items:flex-start}
+#app .step{flex:1;text-align:center;position:relative;font-size:.85em;color:var(--text2)}
+#app .step .c{width:26px;height:26px;border-radius:50%;margin:0 auto 6px;display:grid;place-items:center;background:var(--tint);color:var(--text2);font-weight:700;position:relative;z-index:1}
+#app .step.done .c{background:var(--success);color:#fff}#app .step.cur .c{background:var(--primary);color:#fff;box-shadow:0 0 0 4px var(--tint2)}
+#app .step::before{content:"";position:absolute;top:13px;left:-50%;width:100%;height:2px;background:var(--border)}
+#app .step:first-child::before{display:none}#app .step.done::before,#app .step.cur::before{background:var(--success)}
+#app .tl{display:flex;flex-direction:column;gap:14px;border-left:2px solid var(--border);margin-left:6px;padding-left:16px}
+#app .tl>div{position:relative}#app .tl>div::before{content:"";position:absolute;left:-23px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--primary)}
+#app .drop{border:2px dashed var(--border);border-radius:calc(var(--radius) + 4px);padding:36px;text-align:center;color:var(--text2);cursor:pointer;background:var(--tint)}
+#app .drop:hover{border-color:var(--primary)}
+#app .grid2{display:grid;gap:var(--gap);grid-template-columns:1fr 1fr}
+#app .grid3{display:grid;gap:var(--gap);grid-template-columns:repeat(3,1fr)}
+#app .grid4{display:grid;gap:var(--gap);grid-template-columns:repeat(4,1fr)}
+#app .preview{aspect-ratio:3/4;max-height:420px;border-radius:var(--radius);background:linear-gradient(180deg,#fff,#f1f1f1);border:1px solid var(--border);padding:26px;color:#333;font-size:.8em;overflow:hidden}
+#app .preview i{display:block;height:7px;background:#ddd;border-radius:3px;margin:9px 0}
+#app mark{background:color-mix(in srgb,var(--secondary) 35%,transparent);color:inherit;border-radius:2px}
+</style>
+</head>
+<body>
+<div id="picker"></div>
+<div id="stage"><div id="app"></div><div id="jsonpane"></div></div>
+<script>
+const TEMPLATES = /*__TEMPLATES__*/null;
+
+/* ================= shared sample data (identical for every design) ================= */
+const DOCS = [
+ {id:1,title:"Vendor Agreement - Acme Supplies",file:"Vendor Agreement - Acme Supplies.pdf",type:"pdf",cat:"Contracts",cls:"Confidential",st:"Under review",owner:"Sameer Patil",dept:"Finance",ver:2,size:"1.2 MB",upd:"Today, 10:42"},
+ {id:2,title:"Leave Policy 2026",file:"Leave Policy 2026 v3.pdf",type:"pdf",cat:"Policies",cls:"Internal",st:"Approved",owner:"Asha Kulkarni",dept:"Human Resources",ver:3,size:"640 KB",upd:"Yesterday"},
+ {id:3,title:"Invoice INV-1001 Acme Supplies",file:"INV-1001.pdf",type:"pdf",cat:"Invoices",cls:"Confidential",st:"Approved",owner:"Sameer Patil",dept:"Finance",ver:1,size:"210 KB",upd:"28 Oct 2026"},
+ {id:4,title:"Q3 Budget Forecast",file:"Q3 Budget Forecast.xlsx",type:"xlsx",cat:"Finance",cls:"Confidential",st:"Approved",owner:"Rohan Deshmukh",dept:"Finance",ver:5,size:"2.4 MB",upd:"27 Oct 2026"},
+ {id:5,title:"Salary Revision Letters FY26",file:"Salary Revision Letters.pdf",type:"pdf",cat:"Employee Records",cls:"Highly confidential",st:"Approved",owner:"Asha Kulkarni",dept:"Human Resources",ver:1,size:"3.1 MB",upd:"25 Oct 2026"},
+ {id:6,title:"Apollo Project Charter",file:"Apollo Charter.docx",type:"docx",cat:"Projects",cls:"Internal",st:"Approved",owner:"Priya Nair",dept:"Operations",ver:4,size:"880 KB",upd:"24 Oct 2026"},
+ {id:7,title:"Travel and Expense Policy",file:"Travel Policy.docx",type:"docx",cat:"Policies",cls:"Internal",st:"Approved",owner:"Neha Shah",dept:"Human Resources",ver:2,size:"420 KB",upd:"22 Oct 2026"},
+ {id:8,title:"Service Agreement - Globex Logistics",file:"Globex Agreement.pdf",type:"pdf",cat:"Contracts",cls:"Confidential",st:"Submitted",owner:"Sameer Patil",dept:"Finance",ver:1,size:"1.0 MB",upd:"21 Oct 2026"},
+ {id:9,title:"Quarterly Board Deck",file:"Board Deck Q3.pptx",type:"pptx",cat:"Management",cls:"Confidential",st:"Approved",owner:"Asha Kulkarni",dept:"Operations",ver:6,size:"8.7 MB",upd:"20 Oct 2026"},
+ {id:10,title:"Remote Work Guidelines 2023",file:"Remote Work 2023.pdf",type:"pdf",cat:"Policies",cls:"Internal",st:"Archived",owner:"Neha Shah",dept:"Human Resources",ver:1,size:"390 KB",upd:"02 Jun 2026"},
+ {id:11,title:"Office Floor Plan - Pune",file:"Pune Floor Plan.png",type:"png",cat:"Facilities",cls:"Public",st:"Approved",owner:"Priya Nair",dept:"Operations",ver:2,size:"4.2 MB",upd:"18 Oct 2026"},
+ {id:12,title:"Mutual NDA Template",file:"Mutual NDA.pdf",type:"pdf",cat:"Contracts",cls:"Confidential",st:"Approved",owner:"Sameer Patil",dept:"Finance",ver:1,size:"310 KB",upd:"15 Oct 2026"}
+];
+const USERS = [
+ {n:"Asha Kulkarni",e:"asha.kulkarni@demo.dms.test",role:"Organization Administrator",dept:"Operations",st:"Active",last:"Now"},
+ {n:"Rohan Deshmukh",e:"rohan.deshmukh@demo.dms.test",role:"Department Manager",dept:"Finance",st:"Active",last:"12 min ago"},
+ {n:"Priya Nair",e:"priya.nair@demo.dms.test",role:"Project Manager",dept:"Operations",st:"Active",last:"1 h ago"},
+ {n:"Sameer Patil",e:"sameer.patil@demo.dms.test",role:"Employee",dept:"Finance",st:"Active",last:"Today"},
+ {n:"Meera Joshi",e:"meera.joshi@demo.dms.test",role:"Reviewer",dept:"Operations",st:"Active",last:"Today"},
+ {n:"Neha Shah",e:"neha.shah@demo.dms.test",role:"Employee",dept:"Human Resources",st:"Active",last:"Yesterday"},
+ {n:"Vikram Rao",e:"vikram.rao@demo.dms.test",role:"Employee",dept:"Finance",st:"Invited",last:"Never"},
+ {n:"Anita Desai",e:"anita.desai@demo.dms.test",role:"Employee",dept:"Human Resources",st:"Inactive",last:"3 weeks ago"}
+];
+const APPROVALS = [
+ {id:1,doc:"Vendor Agreement - Acme Supplies",by:"Sameer Patil",step:2,due:"Today",cls:"Confidential"},
+ {id:2,doc:"Service Agreement - Globex Logistics",by:"Sameer Patil",step:1,due:"Tomorrow",cls:"Confidential"},
+ {id:3,doc:"Q4 Marketing Plan",by:"Neha Shah",step:1,due:"In 3 days",cls:"Internal"},
+ {id:4,doc:"Lease Renewal - Mumbai Office",by:"Priya Nair",step:3,due:"In 4 days",cls:"Confidential"},
+ {id:5,doc:"Data Retention Schedule",by:"Asha Kulkarni",step:2,due:"Next week",cls:"Internal"}
+];
+const STEPS = ["Submitted","Department review","Compliance","Released"];
+const UPLOADS = [62,71,58,84,96,88,102,118,110,131,124,142];
+const MONTHS = ["Nov","Dec","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct"];
+const CLASSES = [["Public",14],["Internal",46],["Confidential",33],["Highly confidential",7]];
+const STORAGE = [["Finance",14.2],["Operations",11.8],["Human Resources",9.6],["Legal",5.1],["Other",2.1]];
+const TURN = [["Finance","1.4 days",96],["Human Resources","0.9 days",98],["Operations","2.1 days",91],["Legal","3.2 days",84]];
+const NAV = [["dashboard","Dashboard","home"],["explorer","Documents","folder"],["details","Document details","file"],["upload","Upload","upload"],["approvals","Approvals","check"],["search","Search","search"],["users","Users","users"],["reports","Reports","chart"]];
+
+const FONTS = {"system-sans":'system-ui,"Segoe UI",Roboto,Arial,sans-serif',"humanist":'"Segoe UI","Trebuchet MS",Calibri,sans-serif',"geometric":'"Century Gothic","Avenir Next","Segoe UI",Verdana,sans-serif',"editorial":'Georgia,"Iowan Old Style","Times New Roman",serif',"compact-sans":'"Segoe UI","Arial Narrow",Arial,sans-serif'};
+const SHADOWS = {none:"none",soft:"0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.05)",medium:"0 10px 28px rgba(60,60,160,.16)",strong:"0 14px 34px rgba(0,0,0,.5)"};
+const DENS = {compact:"compact",comfortable:"comfortable",spacious:"spacious"};
+
+/* ================= helpers ================= */
+const P = {home:"M3 11l9-8 9 8M5 10v10h14V10",folder:"M3 6h6l2 2h10v11H3z",upload:"M12 16V4M7 9l5-5 5 5M4 20h16",check:"M9 12l2 2 4-4M12 3a9 9 0 100 18 9 9 0 000-18z",search:"M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-5-5",users:"M9 11a4 4 0 100-8 4 4 0 000 8zM2 21v-1a6 6 0 0112 0v1M17 4a4 4 0 010 7M22 21v-1a6 6 0 00-4-5.6",chart:"M4 20V10M10 20V4M16 20v-8M22 20H2",bell:"M6 17V11a6 6 0 1112 0v6l2 2H4zM10 21h4",file:"M6 2h8l5 5v15H6zM14 2v5h5",share:"M18 8a3 3 0 100-6 3 3 0 000 6zM6 15a3 3 0 100-6 3 3 0 000 6zM18 22a3 3 0 100-6 3 3 0 000 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4",download:"M12 4v12M7 11l5 5 5-5M4 20h16",clock:"M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2",plus:"M12 5v14M5 12h14",x:"M6 6l12 12M18 6L6 18",lock:"M6 11h12v10H6zM8 11V7a4 4 0 018 0v4",history:"M3 12a9 9 0 109-9M3 4v5h5M12 8v5l3 2",grid:"M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",list:"M4 6h16M4 12h16M4 18h16",eye:"M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 100 6 3 3 0 000-6z",cloud:"M7 18a5 5 0 010-10 6 6 0 0111.5 1.5A4 4 0 0118 18z"};
+const ic = n => `<svg class="ic" viewBox="0 0 24 24"><path d="${P[n]||P.file}"/></svg>`;
+const ini = n => n.split(" ").map(x=>x[0]).join("").slice(0,2);
+const stBadge = s => `<span class="badge ${({Approved:"b-ok",Archived:"b-grey","Under review":"b-wait",Submitted:"b-wait",Rejected:"b-bad",Active:"b-ok",Invited:"b-wait",Inactive:"b-grey"})[s]||"b-info"}">${s}</span>`;
+const clsBadge = c => `<span class="badge ${({Public:"b-ok",Internal:"b-info",Confidential:"b-wait","Highly confidential":"b-bad"})[c]||"b-info"}">${c}</span>`;
+const ftile = d => `<div class="ftile t-${d.type}">${d.type.toUpperCase()}</div>`;
+const col = i => `var(--ch${i%5})`;
+
+function bars(data,h=170){const w=480,mx=Math.max(...data)*1.1,bw=w/data.length;
+ return `<svg viewBox="0 0 ${w} ${h+22}" width="100%" style="max-height:230px" role="img">${data.map((v,i)=>{const bh=v/mx*h;return `<rect x="${i*bw+bw*.18}" y="${h-bh}" width="${bw*.64}" height="${bh}" rx="3" fill="${i===data.length-1?'var(--ch1)':'var(--ch0)'}" opacity="${i===data.length-1?1:.85}"/><text x="${i*bw+bw/2}" y="${h+15}" text-anchor="middle" font-size="10" fill="var(--text2)">${MONTHS[i]}</text>`}).join("")}</svg>`}
+function line(data,h=170){const w=480,mx=Math.max(...data)*1.1,st=w/(data.length-1);const pts=data.map((v,i)=>[i*st,h-v/mx*h]);
+ const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+ return `<svg viewBox="0 0 ${w} ${h+22}" width="100%" style="max-height:230px"><defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--ch0)" stop-opacity=".35"/><stop offset="1" stop-color="var(--ch0)" stop-opacity="0"/></linearGradient></defs><path d="${d} L${w} ${h} L0 ${h}Z" fill="url(#lg)"/><path d="${d}" fill="none" stroke="var(--ch0)" stroke-width="2.5" stroke-linejoin="round"/>${pts.map((p,i)=>i%3==0||i==pts.length-1?`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="var(--surface)" stroke="var(--ch0)" stroke-width="2"/><text x="${p[0]}" y="${h+16}" text-anchor="middle" font-size="10" fill="var(--text2)">${MONTHS[i]}</text>`:"").join("")}</svg>`}
+function donut(items,size=150){const tot=items.reduce((a,b)=>a+b[1],0);let acc=0;const r=52,c=2*Math.PI*r;
+ const segs=items.map((it,i)=>{const len=it[1]/tot*c;const s=`<circle r="${r}" cx="70" cy="70" fill="none" stroke="var(--ch${i})" stroke-width="18" stroke-dasharray="${len-2} ${c-len+2}" stroke-dashoffset="${-acc}" transform="rotate(-90 70 70)"/>`;acc+=len;return s}).join("");
+ return `<div class="row" style="gap:18px;flex-wrap:wrap"><svg viewBox="0 0 140 140" width="${size}" height="${size}">${segs}<text x="70" y="68" text-anchor="middle" font-size="22" font-weight="700" fill="var(--text)">1,284</text><text x="70" y="86" text-anchor="middle" font-size="9" fill="var(--text2)">documents</text></svg><div class="legend">${items.map((it,i)=>`<div><i style="background:var(--ch${i})"></i>${it[0]} <b>${it[1]}%</b></div>`).join("")}</div></div>`}
+function hbars(items){const mx=Math.max(...items.map(i=>i[1]));return `<div class="stack" style="gap:12px">${items.map((it,i)=>`<div><div class="row between small"><span>${it[0]}</span><b>${it[1]} GB</b></div><div class="bar"><i style="width:${it[1]/mx*100}%;background:var(--ch${i})"></i></div></div>`).join("")}</div>`}
+
+/* ================= dashboard widgets (fixed registry) ================= */
+const stat = (icon,lab,n,delta,dn) => `<div class="stat"><div class="lab">${ic(icon)}${lab}</div><div class="n">${n}</div><div class="delta ${dn?'dn':''}">${delta}</div></div>`;
+const docRows = (n,cfg) => `<div class="list">${DOCS.slice(0,n).map(d=>`<div class="li">${ftile(d)}<div class="grow"><div style="font-weight:600">${d.title}</div><div class="muted small">${d.owner} · ${d.upd}</div></div>${stBadge(d.st)}</div>`).join("")}</div>`;
+const WIDGETS = {
+ "stat-documents":(c)=>stat("folder","Documents","1,284","▲ 6.2% this month"),
+ "stat-pending":(c)=>stat("clock","Pending approvals","12","3 due today",true),
+ "stat-shared":(c)=>stat("share","Shared with me","86","▲ 9 this week"),
+ "stat-storage":(c)=>stat("cloud","Storage used","42.8 GB","of 100 GB · 43%"),
+ "chart-uploads":(c)=>`<div class="cardh"><h3>Uploads per month</h3><span class="muted small">Last 12 months</span></div>${bars(UPLOADS)}`,
+ "chart-classification":(c)=>`<div class="cardh"><h3>By classification</h3></div>${donut(CLASSES,128)}`,
+ "recent-documents":(c)=>`<div class="cardh"><h3>Recent documents</h3><a>View all</a></div>${docRows(c.dense?4:5,c)}`,
+ "approvals-queue":(c)=>`<div class="cardh"><h3>Waiting for approval</h3><span class="badge b-wait">${APPROVALS.length}</span></div><div class="list">${APPROVALS.slice(0,c.dense?5:4).map(a=>`<div class="li"><div class="grow"><div style="font-weight:600">${a.doc}</div><div class="muted small">${a.by} · step ${a.step} of 4 · due ${a.due}</div></div><button class="btn g">Review</button></div>`).join("")}</div>`,
+ "activity":(c)=>`<div class="cardh"><h3>Recent activity</h3></div><div class="tl">${[["Meera Joshi approved <b>NDA Template</b>","10 min ago"],["Sameer Patil uploaded <b>Globex Agreement</b>","1 h ago"],["Asha Kulkarni archived <b>Remote Work 2023</b>","Yesterday"],["Priya Nair downloaded <b>Invoice INV-1001</b>","Yesterday"]].map(a=>`<div>${a[0]}<div class="muted small">${a[1]}</div></div>`).join("")}</div>`,
+ "expiring-soon":(c)=>`<div class="cardh"><h3>Retention and review due</h3></div><div class="list">${[["Remote Work Guidelines 2023","Retention ends in 12 days"],["Data Retention Schedule","Review due in 20 days"],["Vendor Agreement - Acme","Review due in 41 days"]].map(a=>`<div class="li"><div class="iconbtn" style="color:var(--warning)">${ic("clock")}</div><div class="grow"><div style="font-weight:600">${a[0]}</div><div class="muted small">${a[1]}</div></div></div>`).join("")}</div>`,
+ "welcome":(c)=>c.layout==="dark-hero"?`<div class="small" style="opacity:.8">Tuesday, 27 October</div><h1>Good morning, Asha</h1><p style="max-width:520px;opacity:.85;margin:0 0 16px">You have 12 approvals waiting and 3 documents reaching their review date. 142 documents were uploaded this month.</p><div class="row"><button class="btn p">Review approvals</button><button class="btn g" style="color:#fff;border-color:rgba(255,255,255,.4)">Upload document</button></div>`:c.layout==="focus-list"?`<div class="hello">Good morning, Asha.<br><span class="muted">Twelve things need your attention today.</span></div>`:`<div class="row between"><div><h2>Welcome back, Asha</h2><div class="muted">Here is what is happening in Demo Industries.</div></div><button class="btn p">${ic("plus")}Upload</button></div>`
+};
+function dashboard(t){
+ const d=t.pages.dashboard,list=d.widgets.filter(w=>w.visible).sort((a,b)=>a.order-b.order);
+ const dense=d.layout==="dense-grid";
+ return `<div class="dgrid" style="grid-template-columns:repeat(${d.grid.columns},minmax(0,1fr))">${list.map(w=>`<div class="card ${w.id==="welcome"&&d.layout==="dark-hero"?"hero":""}" style="grid-column:span ${Math.min(w.w,d.grid.columns)}">${WIDGETS[w.id]({layout:d.layout,dense})}</div>`).join("")}</div>`}
+
+/* ================= screens ================= */
+let state={design:0,screen:"dashboard",doc:0,tab:0,dialog:null,sel:1,search:"",filters:{cls:{},st:{},cat:{}},approvals:APPROVALS.map(a=>({...a,state:"pending"})),apSel:0,uploads:[]};
+
+function explorer(t){
+ const l=t.pages.documentExplorer.layout;
+ const toolbar=`<div class="row between" style="margin-bottom:14px;flex-wrap:wrap;gap:10px"><div class="row"><span class="chip on">All</span><span class="chip">My documents</span><span class="chip">Shared with me</span><span class="chip">Archived</span></div><div class="row"><select class="inp" style="width:150px"><option>Sort: Updated</option><option>Sort: Title</option></select><button class="btn p" data-go="upload">${ic("plus")}Upload</button></div></div>`;
+ if(l==="list")return `<div class="row between" style="margin-bottom:24px"><h1>Documents</h1><button class="btn p" data-go="upload">${ic("plus")}Upload</button></div>${DOCS.map(d=>`<div class="li" style="padding:22px 0;cursor:pointer" data-doc="${d.id-1}"><div class="grow"><div style="font-size:1.25em">${d.title}</div><div class="muted small" style="margin-top:4px">${d.cat} · ${d.owner} · ${d.upd} · v${d.ver}</div></div>${clsBadge(d.cls)}${stBadge(d.st)}</div>`).join("")}`;
+ if(l==="grid")return `<div class="row between" style="margin-bottom:18px"><h1>Documents</h1><div class="row"><button class="btn g">${ic("list")}</button><button class="btn p">${ic("grid")}</button><button class="btn p" data-go="upload">${ic("plus")}Upload</button></div></div><div class="grid4" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))">${DOCS.map(d=>`<div class="card" style="cursor:pointer" data-doc="${d.id-1}"><div style="height:110px;border-radius:calc(var(--radius) - 4px);background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 18%,var(--surface)),color-mix(in srgb,var(--secondary) 22%,var(--surface)));display:grid;place-items:center;margin-bottom:12px"><div class="ftile t-${d.type}" style="width:46px;height:56px">${d.type.toUpperCase()}</div></div><div style="font-weight:700">${d.title}</div><div class="muted small" style="margin:4px 0 10px">${d.owner} · ${d.upd}</div><div class="row">${stBadge(d.st)}<span class="muted small">v${d.ver}</span></div></div>`).join("")}</div>`;
+ if(l==="tree-table")return `<div style="display:grid;grid-template-columns:1fr;gap:10px"><div class="row between"><div class="muted small">Workspace / Finance / Contracts</div><div class="row"><span class="chip on">Table</span><span class="chip">Pending review (2)</span><span class="chip">Confidential</span><span class="chip">Expiring</span><button class="btn p">${ic("upload")}Upload</button></div></div><div class="card" style="padding:0"><div class="tw"><table><thead><tr><th><input type="checkbox"></th><th>Name</th><th>Category</th><th>Class.</th><th>Status</th><th>Owner</th><th>Dept</th><th>Ver</th><th>Size</th><th>Updated</th></tr></thead><tbody>${DOCS.map(d=>`<tr data-doc="${d.id-1}" style="cursor:pointer"><td><input type="checkbox"></td><td style="font-weight:600">${d.title}</td><td>${d.cat}</td><td>${clsBadge(d.cls)}</td><td>${stBadge(d.st)}</td><td>${d.owner}</td><td>${d.dept}</td><td>v${d.ver}</td><td>${d.size}</td><td>${d.upd}</td></tr>`).join("")}</tbody></table></div></div><div class="card row" style="gap:18px">${ftile(DOCS[0])}<div class="grow"><b>${DOCS[0].title}</b> <span class="muted">· ${DOCS[0].file} · ${DOCS[0].size}</span><div class="muted small">Step 2 of 4 · Compliance review by Meera Joshi · due today</div></div><button class="btn g">${ic("eye")}Preview</button><button class="btn g">${ic("share")}Share</button><button class="btn p">${ic("check")}Review</button></div></div>`;
+ return `<div class="row between" style="margin-bottom:14px"><h1>Documents</h1></div>${toolbar}<div class="card" style="padding:0"><div class="tw"><table><thead><tr><th>Title</th><th>Category</th><th>Classification</th><th>Status</th><th>Owner</th><th>Version</th><th>Updated</th></tr></thead><tbody>${DOCS.map(d=>`<tr data-doc="${d.id-1}" style="cursor:pointer"><td><div class="row">${ftile(d)}<div><div style="font-weight:600">${d.title}</div><div class="muted small">${d.file}</div></div></div></td><td>${d.cat}</td><td>${clsBadge(d.cls)}</td><td>${stBadge(d.st)}</td><td>${d.owner}</td><td>v${d.ver}</td><td>${d.upd}</td></tr>`).join("")}</tbody></table></div></div>`}
+
+function details(t){
+ const d=DOCS[state.doc],l=t.pages.documentDetails.layout;
+ const head=`<div class="row between" style="margin-bottom:${l==="stacked"?30:16}px;flex-wrap:wrap;gap:10px"><div class="row" style="gap:14px">${ftile(d)}<div><h1 style="${l==="stacked"?"font-size:2.2em;font-weight:400":""}">${d.title}</h1><div class="row small muted" style="margin-top:6px">${clsBadge(d.cls)}${stBadge(d.st)}<span>${d.cat} · ${d.dept}</span></div></div></div><div class="row"><button class="btn g">${ic("download")}Download</button><button class="btn g" data-dialog="share">${ic("share")}Share</button><button class="btn p">${ic("upload")}New version</button></div></div>`;
+ const meta=`<dl class="kv"><dt>File</dt><dd>${d.file}</dd><dt>Owner</dt><dd>${d.owner}</dd><dt>Department</dt><dd>${d.dept}</dd><dt>Project</dt><dd>Apollo ERP Rollout</dd><dt>Contract reference</dt><dd>CT-0012</dd><dt>Size</dt><dd>${d.size}</dd><dt>Keep until</dt><dd>29 Oct 2033</dd><dt>Review due</dt><dd>24 Nov 2026</dd><dt>Tags</dt><dd><span class="chip">vendor</span> <span class="chip">procurement</span></dd></dl>`;
+ const prev=`<div class="preview"><b style="font-size:1.4em">${d.title.toUpperCase()}</b><i style="width:40%"></i><i></i><i></i><i style="width:90%"></i><i></i><i style="width:70%"></i><i></i><i style="width:85%"></i><i style="width:60%"></i></div>`;
+ const versions=`<table><thead><tr><th>Version</th><th>File</th><th>Added by</th><th>Review</th><th>Date</th><th></th></tr></thead><tbody>${[...Array(Math.min(d.ver,4))].map((_,i)=>{const v=d.ver-i;return `<tr><td>v${v} ${i==0?'<span class="badge b-info">Current</span>':""}</td><td>${d.file}</td><td>${i%2?"Asha Kulkarni":d.owner}</td><td>${i==0&&d.st!=="Approved"?stBadge("Under review"):stBadge("Approved")}</td><td>${["27 Oct","19 Oct","02 Oct","11 Sep"][i]} 2026</td><td><a>Preview</a> · <a>Download</a>${i?` · <a>Restore</a>`:""}</td></tr>`}).join("")}</tbody></table>`;
+ const flow=`<div class="steps">${STEPS.map((s,i)=>`<div class="step ${i<1?"done":i==1?"cur":""}"><div class="c">${i<1?"✓":i+1}</div>${s}</div>`).join("")}</div>`;
+ const tl=`<div class="tl"><div><b>Submitted</b> by ${d.owner}<div class="muted small">21 Oct, 16:20</div></div><div><b>Department review</b> approved by Rohan Deshmukh<div class="muted small">22 Oct · "Terms match the approved template."</div></div><div><b>Compliance</b> waiting for Meera Joshi<div class="muted small">Due today</div></div></div>`;
+ const shares=`<div class="list">${[["Priya Nair","View and download","No expiry"],["Meera Joshi","View only","Until 30 Nov"]].map(s=>`<div class="li"><div class="av">${ini(s[0])}</div><div class="grow"><b>${s[0]}</b><div class="muted small">${s[1]} · ${s[2]}</div></div><a>Revoke</a></div>`).join("")}</div>`;
+ if(l==="two-column")return head+`<div style="display:grid;grid-template-columns:1.25fr 1fr;gap:var(--gap)"><div class="stack"><div class="card"><h3>Preview</h3>${prev}</div><div class="card"><h3>Versions</h3><div class="tw">${versions}</div></div></div><div class="stack"><div class="card"><h3>Details</h3>${meta}</div><div class="card"><h3>Approval</h3>${flow}<div style="height:16px"></div>${tl}</div><div class="card"><h3>Shared with</h3>${shares}</div></div></div>`;
+ if(l==="stacked")return head+`<div class="card">${meta}</div><div style="height:30px"></div><div class="card"><h2 style="margin-bottom:16px">Versions</h2><div class="tw">${versions}</div></div><div style="height:30px"></div><div class="card"><h2 style="margin-bottom:16px">Approval history</h2>${tl}</div><div style="height:30px"></div><div class="card"><h2 style="margin-bottom:16px">Shared with</h2>${shares}</div>`;
+ const tabs=["Overview","Versions","Approvals","Sharing","Activity"];
+ const body=[`<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--gap)"><div class="card"><h3>Details</h3>${meta}</div><div class="card"><h3>Preview</h3>${prev}</div></div>`,`<div class="card"><div class="tw">${versions}</div></div>`,`<div class="card">${flow}<div style="height:20px"></div>${tl}</div>`,`<div class="card">${shares}</div>`,`<div class="card">${WIDGETS.activity({})}</div>`][state.tab];
+ return head+`<div class="tabs">${tabs.map((x,i)=>`<a class="${i==state.tab?"on":""}" data-tab="${i}">${x}</a>`).join("")}</div>`+body}
+
+function uploadScreen(){
+ return `<div class="row between" style="margin-bottom:16px"><h1>Upload documents</h1></div><div class="grid2" style="grid-template-columns:1.2fr 1fr"><div class="stack"><div class="drop" data-drop>${ic("upload")}<div style="font-size:1.1em;font-weight:600;margin:8px 0 4px">Drag files here or click to choose</div><div class="small">PDF, Word, Excel, PowerPoint and images up to 100 MB. Files are scanned before they are stored.</div></div>${state.uploads.length?`<div class="card"><h3>Selected files</h3><div class="list">${state.uploads.map(u=>`<div class="li"><div class="grow"><b>${u.name}</b><div class="bar" style="margin-top:6px"><i style="width:${u.p}%"></i></div></div><span class="muted small">${u.p}%</span></div>`).join("")}</div></div>`:""}</div>
+ <div class="card stack" style="gap:14px"><h3>Document details</h3><div class="field"><label>Title</label><input class="inp" value="Service Agreement - Globex Logistics"></div><div class="grid2" style="gap:14px"><div class="field"><label>Category</label><select class="inp"><option>Contracts</option><option>Invoices</option><option>Policies</option></select></div><div class="field"><label>Classification</label><select class="inp"><option>Confidential</option><option>Highly confidential</option></select></div></div><div class="grid2" style="gap:14px"><div class="field"><label>Department</label><select class="inp"><option>Finance</option><option>Human Resources</option></select></div><div class="field"><label>Project</label><select class="inp"><option>Apollo ERP Rollout</option><option>None</option></select></div></div><div class="field"><label>Contract reference</label><input class="inp" value="CT-0031"></div><div class="row" style="background:var(--tint);padding:10px 12px;border-radius:var(--radius)">${ic("check")}<span class="small">This category needs approval. The document is visible only to you and the reviewers until it is released.</span></div><div class="row" style="justify-content:flex-end"><button class="btn g">Cancel</button><button class="btn p">${ic("upload")}Upload</button></div></div></div>`}
+
+function approvalsScreen(){
+ const a=state.approvals,cur=a[state.apSel];
+ return `<div class="row between" style="margin-bottom:16px"><h1>Approval workflow</h1><div class="row"><span class="badge b-wait">${a.filter(x=>x.state==="pending").length} waiting</span></div></div><div style="display:grid;grid-template-columns:minmax(260px,1fr) 1.6fr;gap:var(--gap)"><div class="card" style="padding-left:0;padding-right:0"><div class="list">${a.map((x,i)=>`<div class="li" style="padding-left:var(--card-pad);padding-right:var(--card-pad);cursor:pointer;${i==state.apSel?"background:var(--tint)":""}" data-ap="${i}"><div class="grow"><div style="font-weight:600">${x.doc}</div><div class="muted small">${x.by} · due ${x.due}</div></div>${x.state==="pending"?stBadge("Submitted"):x.state==="approved"?stBadge("Approved"):`<span class="badge b-bad">Rejected</span>`}</div>`).join("")}</div></div>
+ <div class="stack"><div class="card"><div class="row between" style="margin-bottom:18px"><div><h2>${cur.doc}</h2><div class="muted small">Submitted by ${cur.by} · ${cur.cls}</div></div>${clsBadge(cur.cls)}</div><div class="steps">${STEPS.map((s,i)=>`<div class="step ${cur.state==="approved"||i<cur.step-1?"done":i==cur.step-1?"cur":""}"><div class="c">${cur.state==="approved"||i<cur.step-1?"✓":i+1}</div>${s}</div>`).join("")}</div></div>
+ <div class="card"><h3>Decision</h3><div class="field" style="margin-bottom:12px"><label>Comment (required to reject)</label><textarea class="inp" rows="3">Terms match the approved template.</textarea></div>${cur.state==="pending"?`<div class="row"><button class="btn ok" data-decide="approved">${ic("check")}Approve</button><button class="btn d" data-decide="rejected">${ic("x")}Reject</button><span class="grow"></span><a data-go="details">Open the document</a></div>`:`<div class="row">${cur.state==="approved"?stBadge("Approved"):'<span class="badge b-bad">Rejected</span>'}<span class="muted small">Decision recorded and audited.</span></div>`}</div>
+ <div class="card"><h3>History</h3><div class="tl"><div><b>Submitted</b> by ${cur.by}<div class="muted small">Oct 21, 16:20</div></div><div><b>Step ${cur.step}</b> assigned to Meera Joshi, Rohan Deshmukh<div class="muted small">Any one reviewer can decide</div></div></div></div></div></div>`}
+
+function searchScreen(){
+ const q=state.search.toLowerCase(),F=state.filters;
+ const groups={cls:["Public","Internal","Confidential","Highly confidential"],st:["Approved","Under review","Submitted","Archived"],cat:["Contracts","Policies","Invoices","Finance"]};
+ const names={cls:"Classification",st:"Status",cat:"Category"};
+ const res=DOCS.filter(d=>(!q||(d.title+d.file+d.cat+d.owner).toLowerCase().includes(q))&&["cls","st","cat"].every(k=>{const on=Object.keys(F[k]).filter(x=>F[k][x]);return !on.length||on.includes(d[k])}));
+ const hl=s=>q?s.replace(new RegExp("("+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","ig"),"<mark>$1</mark>"):s;
+ return `<h1 style="margin-bottom:16px">Search</h1><div class="searchbox" style="max-width:none;margin-bottom:var(--gap);background:var(--surface);height:calc(var(--ctl-h) + 8px)">${ic("search")}<input id="q" class="inp" style="border:0;background:transparent;box-shadow:none" placeholder="Search titles, file names, metadata and document text" value="${state.search}"></div><div style="display:grid;grid-template-columns:240px 1fr;gap:var(--gap)"><div class="card stack" style="gap:16px;align-self:start">${Object.keys(groups).map(k=>`<div><h3 style="margin-bottom:8px">${names[k]}</h3>${groups[k].map(x=>`<label class="row small" style="padding:3px 0;cursor:pointer"><input type="checkbox" data-f="${k}|${x}" ${F[k][x]?"checked":""}>${x}<span class="muted" style="margin-left:auto">${DOCS.filter(d=>d[k]===x).length}</span></label>`).join("")}</div>`).join("")}<div class="field"><label>Updated</label><select class="inp"><option>Any time</option><option>Last 7 days</option><option>Last 30 days</option></select></div></div><div class="card" style="padding-top:8px"><div class="muted small" style="padding:8px 0">${res.length} result${res.length==1?"":"s"}${q?` for “${state.search}”`:""} · only documents you are allowed to see</div><div class="list">${res.map(d=>`<div class="li" style="cursor:pointer" data-doc="${d.id-1}">${ftile(d)}<div class="grow"><div style="font-weight:600">${hl(d.title)}</div><div class="muted small">${hl(d.file)} · ${d.cat} · ${d.owner} · ${d.upd}</div></div>${clsBadge(d.cls)}${stBadge(d.st)}</div>`).join("")||'<div class="muted" style="padding:30px;text-align:center">No documents match.</div>'}</div></div></div>`}
+
+function usersScreen(){
+ return `<div class="row between" style="margin-bottom:16px"><h1>User management</h1><button class="btn p" data-dialog="invite">${ic("plus")}Invite user</button></div><div class="grid4" style="margin-bottom:var(--gap)">${[["Active users","6"],["Invited","1"],["Inactive","1"],["Roles","5"]].map(s=>`<div class="card stat"><div class="lab">${s[0]}</div><div class="n">${s[1]}</div></div>`).join("")}</div><div class="card" style="padding:0"><div class="tw"><table><thead><tr><th>User</th><th>Role</th><th>Department</th><th>Status</th><th>Last active</th><th></th></tr></thead><tbody>${USERS.map(u=>`<tr><td><div class="row"><div class="av">${ini(u.n)}</div><div><b>${u.n}</b><div class="muted small">${u.e}</div></div></div></td><td>${u.role}</td><td>${u.dept}</td><td>${stBadge(u.st)}</td><td>${u.last}</td><td><a>Edit</a> · <a>Roles</a></td></tr>`).join("")}</tbody></table></div></div>`}
+
+function reportsScreen(t){
+ const l=t.pages.reports.layout;
+ const kp=`<div class="grid4">${[["Documents","1,284","▲ 6.2%"],["Uploads this month","142","▲ 8.4%"],["Average approval time","1.7 days","▼ 0.3 days"],["Storage","42.8 GB","43% of plan"]].map(s=>`<div class="card stat"><div class="lab">${s[0]}</div><div class="n">${s[1]}</div><div class="delta">${s[2]}</div></div>`).join("")}</div>`;
+ const trend=`<div class="card"><div class="cardh"><h3>Upload trend</h3><span class="muted small">Documents per month</span></div>${line(UPLOADS)}</div>`;
+ const cls=`<div class="card"><div class="cardh"><h3>Classification mix</h3></div>${donut(CLASSES,140)}</div>`;
+ const sto=`<div class="card"><div class="cardh"><h3>Storage by department</h3><span class="muted small">GB</span></div>${hbars(STORAGE)}</div>`;
+ const turn=`<div class="card"><div class="cardh"><h3>Approval turnaround</h3></div><table><thead><tr><th>Department</th><th>Average</th><th>On time</th></tr></thead><tbody>${TURN.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td><div class="row"><div class="bar grow"><i style="width:${r[2]}%"></i></div><b>${r[2]}%</b></div></td></tr>`).join("")}</tbody></table></div>`;
+ const bar=`<div class="row between" style="margin-bottom:16px"><h1>Reports and analytics</h1><div class="row"><select class="inp" style="width:160px"><option>Last 12 months</option><option>Last quarter</option></select><button class="btn g">${ic("download")}CSV</button><button class="btn p">${ic("download")}Excel</button></div></div>`;
+ if(l==="stacked")return bar+`<div class="stack" style="gap:34px">${kp}${trend}<div class="grid2">${cls}${sto}</div>${turn}</div>`;
+ return bar+`<div class="stack">${kp}<div style="display:grid;grid-template-columns:1.6fr 1fr;gap:var(--gap)">${trend}${cls}</div><div class="grid2">${sto}${turn}</div></div>`}
+
+const SCREENS={dashboard:dashboard,explorer:explorer,details:details,upload:uploadScreen,approvals:approvalsScreen,search:searchScreen,users:usersScreen,reports:reportsScreen};
+
+/* ================= shell ================= */
+function dialogHtml(){
+ if(state.dialog==="share")return `<div class="scrim" data-close><div class="dialog" onclick="event.stopPropagation()"><h2>Share “${DOCS[state.doc].title}”</h2><div class="field"><label>Colleague</label><select class="inp"><option>Priya Nair</option><option>Rohan Deshmukh</option></select></div><div class="field"><label>Access</label><select class="inp"><option>View only</option><option>View and download</option></select></div><div class="field"><label>Expires</label><input class="inp" value="30 Nov 2026"></div><div class="row" style="justify-content:flex-end"><button class="btn g" data-close>Cancel</button><button class="btn p" data-close>Share</button></div></div></div>`;
+ if(state.dialog==="invite")return `<div class="scrim" data-close><div class="dialog" onclick="event.stopPropagation()"><h2>Invite a colleague</h2><div class="field"><label>Work email</label><input class="inp" value="new.hire@demo.dms.test"></div><div class="field"><label>Role</label><select class="inp"><option>Employee</option><option>Reviewer</option><option>Department Manager</option></select></div><div class="row" style="justify-content:flex-end"><button class="btn g" data-close>Cancel</button><button class="btn p" data-close>Send invitation</button></div></div></div>`;
+ return ""}
+
+function treePanel(){
+ const f=[["All documents",1284,0],["Finance",412,1],["Contracts",96,2],["Invoices",230,2],["Human Resources",298,1],["Policies",64,2],["Employee records",120,2],["Operations",341,1],["Legal",233,1]];
+ return `<div class="tree"><div class="navsec" style="padding-left:8px">Workspace</div>${f.map((x,i)=>`<div class="t l${x[2]} ${i==2?"on":""}">${ic("folder")}${x[0]}<span class="cnt">${x[1]}</span></div>`).join("")}<div class="navsec" style="padding-left:8px;margin-top:10px">Saved views</div>${["Pending my review","Expiring in 30 days","Shared by me","Legal hold"].map(x=>`<div class="t">${ic("list")}${x}</div>`).join("")}</div>`}
+
+function render(){
+ const t=TEMPLATES[state.design],app=document.getElementById("app"),c=t.theme.colors,cm=t.components;
+ const set={mode:t.theme.mode,sidebar:t.layout.sidebarVariant,density:DENS[t.density],width:t.layout.contentWidth,card:cm.card,button:cm.button,table:cm.table,input:cm.input,dropdown:cm.dropdown,tabs:cm.tabs,badge:cm.badge,dialog:cm.dialog,dl:t.pages.dashboard.layout};
+ Object.entries(set).forEach(([k,v])=>app.dataset[k]=v);
+ const v={primary:c.primary,secondary:c.secondary,bg:c.background,surface:c.surface,text:c.textPrimary,text2:c.textSecondary,border:c.border,success:c.success,warning:c.warning,error:c.error,info:c.info,radius:t.theme.radius+"px",shadow:SHADOWS[t.theme.shadow],font:FONTS[t.theme.typography.fontFamily],scale:t.theme.typography.scale,hw:t.theme.typography.headingWeight,gap:t.layout.pageSpacing+"px",sw:t.layout.sidebarWidth+"px"};
+ Object.entries(v).forEach(([k,x])=>app.style.setProperty("--"+k,x));
+ c.chart.forEach((x,i)=>app.style.setProperty("--ch"+i,x));
+ const screen=SCREENS[state.screen](t),title=NAV.find(n=>n[0]===state.screen)[1];
+ const nav=NAV.map(n=>`<a class="${n[0]===state.screen?"on":""}" data-go="${n[0]}" title="${n[1]}">${ic(n[2])}<span>${n[1]}</span></a>`).join("");
+ const top=`<div class="topnav"><div class="brand"><div class="logo">D</div>DMS</div>${NAV.map(n=>`<a class="${n[0]===state.screen?"on":""}" data-go="${n[0]}">${n[1].replace("Document details","Details")}</a>`).join("")}<span class="sp"></span><div class="av">AK</div></div>`;
+ const hv=t.layout.headerVariant;
+ const bell=`<div class="iconbtn">${ic("bell")}<span class="dot"></span></div>`;
+ const header=({search:`<div class="head"><div class="searchbox">${ic("search")}Search documents, people, tags…</div><span class="grow"></span>${bell}<div class="av">AK</div></div>`,
+  minimal:t.layout.sidebarVariant==="top"?"":`<div class="head"><b style="font-size:1.05em">${title}</b><span class="grow"></span>${bell}<div class="av">AK</div></div>`,
+  pill:`<div class="head"><div><div class="muted small">Demo Industries</div><b style="font-size:1.1em">Document workspace</b></div><span class="grow"></span><div class="searchbox" style="border-radius:999px;max-width:340px;background:var(--surface);box-shadow:var(--shadow);border:0">${ic("search")}Search…</div>${bell}<div class="av">AK</div></div>`,
+  toolbar:`<div class="head" style="padding-top:8px;padding-bottom:8px"><span class="muted small">Demo Industries / ${title}</span><span class="grow"></span><div class="searchbox" style="max-width:300px">${ic("search")}Quick find (Ctrl+K)</div><button class="btn g">${ic("plus")}New</button><button class="btn p">${ic("upload")}Upload</button>${bell}<div class="av">AK</div></div>`})[hv];
+ const side=`<aside class="side"><div class="brand"><div class="logo">D</div>${set.sidebar==="rail-tree"?"":"DMS"}</div><nav class="nav">${nav}</nav><div class="userbox"><div class="av">AK</div>${set.sidebar==="rail-tree"?"":`<div><b>Asha Kulkarni</b><div class="muted small">Administrator</div></div>`}</div></aside>`;
+ app.innerHTML=`<div class="shell">${side}${set.sidebar==="rail-tree"?treePanel():""}<div class="main">${top}${header}<main class="page"><div class="inner">${screen}</div></main></div></div>${dialogHtml()}`;
+ app.style.position="relative";
+ document.getElementById("jsonpane").textContent=JSON.stringify(t,null,2);
+ bind();
+ const pk=document.getElementById("picker");
+ pk.innerHTML=`<b>DMS design showcase</b>${TEMPLATES.map((x,i)=>`<button data-d="${i}" aria-pressed="${i==state.design}"><i style="background:${x.theme.colors.primary}"></i>${i+1}. ${x.name}</button>`).join("")}<span class="sp"></span><button id="jbtn" aria-pressed="${document.getElementById("jsonpane").classList.contains("on")}">{ } Template JSON</button>`;
+ pk.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{state.design=+b.dataset.d;state.tab=0;location.hash=`d=${TEMPLATES[state.design].key}&s=${state.screen}`;render()});
+ document.getElementById("jbtn").onclick=()=>{document.getElementById("jsonpane").classList.toggle("on");render()};
+}
+function bind(){
+ const app=document.getElementById("app");
+ app.querySelectorAll("[data-go]").forEach(e=>e.onclick=()=>{state.screen=e.dataset.go;state.dialog=null;location.hash=`d=${TEMPLATES[state.design].key}&s=${state.screen}`;render()});
+ app.querySelectorAll("[data-doc]").forEach(e=>e.onclick=()=>{state.doc=+e.dataset.doc;state.screen="details";state.tab=0;render()});
+ app.querySelectorAll("[data-tab]").forEach(e=>e.onclick=()=>{state.tab=+e.dataset.tab;render()});
+ app.querySelectorAll("[data-dialog]").forEach(e=>e.onclick=()=>{state.dialog=e.dataset.dialog;render()});
+ app.querySelectorAll("[data-close]").forEach(e=>e.onclick=()=>{state.dialog=null;render()});
+ app.querySelectorAll("[data-ap]").forEach(e=>e.onclick=()=>{state.apSel=+e.dataset.ap;render()});
+ app.querySelectorAll("[data-decide]").forEach(e=>e.onclick=()=>{state.approvals[state.apSel].state=e.dataset.decide;render()});
+ app.querySelectorAll("[data-f]").forEach(e=>e.onchange=()=>{const [k,x]=e.dataset.f.split("|");state.filters[k][x]=e.checked;render()});
+ const q=app.querySelector("#q");if(q){q.oninput=()=>{state.search=q.value;const pos=q.selectionStart;render();const n=document.getElementById("q");n.focus();n.setSelectionRange(pos,pos)}}
+ const drop=app.querySelector("[data-drop]");if(drop)drop.onclick=()=>{const f={name:["Service Agreement - Globex.pdf","Signed NDA - Acme.pdf","Invoice INV-1044.xlsx"][state.uploads.length%3],p:0};state.uploads.push(f);render();const iv=setInterval(()=>{f.p=Math.min(100,f.p+20);render();if(f.p>=100)clearInterval(iv)},250)};
+}
+function fromHash(){const m=Object.fromEntries(location.hash.slice(1).split("&").map(x=>x.split("=")));const i=TEMPLATES.findIndex(t=>t.key===m.d);if(i>=0)state.design=i;if(m.s&&SCREENS[m.s])state.screen=m.s;if(m.tab)state.tab=+m.tab;if(m.dialog)state.dialog=m.dialog;if(m.doc)state.doc=+m.doc}
+window.addEventListener("hashchange",()=>{fromHash();render()});
+fromHash();render();
+</script>
+</body>
+</html>

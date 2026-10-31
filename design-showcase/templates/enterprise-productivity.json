@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0",
+  "key": "enterprise-productivity",
+  "name": "Enterprise Productivity",
+  "description": "Compact icon rail with a folder tree, dense information-rich tables and a workflow-first dashboard.",
+  "version": "1.0.0",
+  "theme": {
+    "mode": "light",
+    "colors": {
+      "primary": "#0b6e6e",
+      "secondary": "#c2410c",
+      "background": "#e9edf1",
+      "surface": "#ffffff",
+      "textPrimary": "#18222d",
+      "textSecondary": "#4b5a6a",
+      "border": "#cfd7df",
+      "success": "#15803d",
+      "warning": "#b45309",
+      "error": "#b91c1c",
+      "info": "#075985",
+      "chart": ["#0b6e6e", "#c2410c", "#2563eb", "#7c3aed", "#8a99a8"]
+    },
+    "typography": { "fontFamily": "compact-sans", "scale": 0.92, "headingWeight": 600 },
+    "radius": 3,
+    "shadow": "none"
+  },
+  "layout": {
+    "sidebarVariant": "rail-tree",
+    "sidebarWidth": 64,
+    "headerVariant": "toolbar",
+    "contentWidth": "fluid",
+    "pageSpacing": 14,
+    "navigationPosition": "left"
+  },
+  "density": "compact",
+  "components": {
+    "card": "outlined",
+    "button": "solid",
+    "table": "dense",
+    "input": "outlined",
+    "dropdown": "outlined",
+    "tabs": "underline",
+    "dialog": "standard",
+    "badge": "filled"
+  },
+  "pages": {
+    "dashboard": {
+      "layout": "dense-grid",
+      "grid": { "columns": 12 },
+      "widgets": [
+        { "id": "stat-pending", "visible": true, "order": 1, "w": 3, "h": 1 },
+        { "id": "stat-documents", "visible": true, "order": 2, "w": 3, "h": 1 },
+        { "id": "stat-shared", "visible": true, "order": 3, "w": 3, "h": 1 },
+        { "id": "stat-storage", "visible": true, "order": 4, "w": 3, "h": 1 },
+        { "id": "approvals-queue", "visible": true, "order": 5, "w": 5, "h": 2 },
+        { "id": "expiring-soon", "visible": true, "order": 6, "w": 4, "h": 2 },
+        { "id": "chart-classification", "visible": true, "order": 7, "w": 3, "h": 2 },
+        { "id": "recent-documents", "visible": true, "order": 8, "w": 5, "h": 2 },
+        { "id": "activity", "visible": true, "order": 9, "w": 4, "h": 2 },
+        { "id": "chart-uploads", "visible": true, "order": 10, "w": 3, "h": 2 },
+        { "id": "welcome", "visible": false, "order": 11, "w": 12, "h": 1 }
+      ]
+    },
+    "documentExplorer": { "layout": "tree-table" },
+    "documentDetails": { "layout": "tabbed" },
+    "reports": { "layout": "grid" }
+  }
+}
