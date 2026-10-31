@@ -217,3 +217,22 @@ describe("template thumbnail", () => {
     }
   });
 });
+
+describe("the guide for generating designs", () => {
+  it("lists every value the schema allows, so instructions cannot drift from the schema", () => {
+    const guide = readFileSync(join(here, "../../../docs/guides/GENERATING_UI_TEMPLATES.md"), "utf8");
+    const values = new Set<string>();
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) node.forEach(walk);
+      else if (node && typeof node === "object") {
+        const o = node as Record<string, unknown>;
+        if (Array.isArray(o.enum)) o.enum.forEach((v) => values.add(String(v)));
+        Object.values(o).forEach(walk);
+      }
+    };
+    walk(uiTemplateSchema);
+    expect(values.size).toBeGreaterThan(60);
+    const missing = [...values].filter((v) => !guide.includes(v));
+    expect(missing).toEqual([]);
+  });
+});
