@@ -12,8 +12,8 @@ Status on 2026-10-31. Backend: Sprints 0-17 done and tested (346 passed). Web: S
 | 4 | Password change (signed in) | None | None | Small API addition and screen |
 | 5 | Users, invitations, registration requests | Done | Done (People: employees, invitations, join requests, two-step reset) | None |
 | 6 | Roles and permissions | Done | Done (People: give and remove roles; your own permissions page) | None |
-| 7 | Organization (departments, branches, projects, designations, employees) | Done | Partial: read-only lists | Create/edit, managers, project members, profiles |
-| 8 | Categories, metadata fields, tags | Done | None (used in upload and filters) | Category and tag admin screens, approval-step setup |
+| 7 | Organization (departments, branches, projects, designations, employees) | Done | Done (add, edit, switch off, managers, project people, employee details) | None |
+| 8 | Categories, metadata fields, tags | Done | Done (categories with review steps, rules and fields; rename or move; tags and tag policy) | None |
 | 9 | Upload and security scan | Done | Done | In-page upload progress for large files (hardening) |
 | 10 | Document library, search, filters | Done | Done | "My documents", more filters (department, project, tag, dates) |
 | 11 | Document detail, preview, download | Done | Done (preview opens inside the page) | None |

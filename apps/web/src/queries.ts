@@ -16,6 +16,7 @@ export interface OrgItem {
   code?: string | null;
   status: string;
   manager_membership_id?: string | null;
+  parent_id?: string | null;
 }
 
 export function useCategories() {

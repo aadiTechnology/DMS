@@ -11,6 +11,7 @@ import Account from "./pages/Account";
 import Appearance from "./pages/Appearance";
 import DesignCatalogue from "./pages/DesignCatalogue";
 import Approvals from "./pages/Approvals";
+import Categories from "./pages/Categories";
 import DocumentDetail from "./pages/DocumentDetail";
 import Documents from "./pages/Documents";
 import Login from "./pages/Login";
@@ -72,6 +73,7 @@ function Authenticated() {
               <Route path="/approvals" element={<Approvals />} />
               <Route path="/shared" element={<Shared />} />
               <Route path="/organization" element={<Organization />} />
+              <Route path="/categories" element={<Categories />} />
               <Route path="/people" element={<People />} />
               <Route path="/activity" element={<Activity />} />
               <Route path="/retention" element={<Retention />} />
