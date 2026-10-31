@@ -1,5 +1,9 @@
 import ArchiveIcon from "@mui/icons-material/Archive";
 import DownloadIcon from "@mui/icons-material/Download";
+import EditIcon from "@mui/icons-material/Edit";
+import RestoreIcon from "@mui/icons-material/Restore";
+import ShareIcon from "@mui/icons-material/Share";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import UnarchiveIcon from "@mui/icons-material/Unarchive";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import {
@@ -13,6 +17,10 @@ import { Link as RouterLink, useParams } from "react-router-dom";
 import { api, errorText } from "../api";
 import { useCan } from "../App";
 import { classTone, date, dateTime, label, size, stateTone } from "../format";
+import EditDetailsDialog from "../components/EditDetailsDialog";
+import NewVersionDialog from "../components/NewVersionDialog";
+import PreviewDialog from "../components/PreviewDialog";
+import ShareDialog from "../components/ShareDialog";
 import { categoryName, useCategories } from "../queries";
 
 interface Version {
@@ -29,6 +37,8 @@ interface Doc {
   id: string;
   title: string;
   category_id: string;
+  category_version_number: number;
+  row_version: number;
   classification: string;
   lifecycle_state: string;
   current_version_number: number | null;
@@ -64,6 +74,11 @@ export default function DocumentDetail() {
   const categories = useCategories();
   const canArchive = useCan("document.archive");
   const canRestore = useCan("document.restore");
+  const canShare = useCan("document.share");
+  const canAddVersion = useCan("document.upload_version");
+  const canEdit = useCan("document.edit_metadata");
+  const [dialog, setDialog] = useState<"share" | "version" | "edit" | null>(null);
+  const [previewing, setPreviewing] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [tab, setTab] = useState(0);
   const layout = useTemplate().pages.documentDetails.layout;
@@ -76,6 +91,15 @@ export default function DocumentDetail() {
   const change = useMutation({
     mutationFn: (action: "archive" | "unarchive") => api(`/documents/${id}/${action}`, { method: "POST" }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["doc", id] }),
+    onError: (e) => setMessage(errorText(e)),
+  });
+
+  const restore = useMutation({
+    mutationFn: (n: number) => api(`/documents/${id}/versions/${n}/restore`, { body: { based_on_version: Math.max(...(doc.data?.versions.map((v) => v.version_number) ?? [0])) } }),
+    onSuccess: async (_d, n) => {
+      setMessage(`Version ${n} was restored as a new version. Earlier versions are unchanged.`);
+      await client.invalidateQueries({ queryKey: ["doc", id] });
+    },
     onError: (e) => setMessage(errorText(e)),
   });
 
@@ -132,8 +156,11 @@ export default function DocumentDetail() {
             <TableCell>{v.review_status === "none" ? "Not required" : label(v.review_status)}</TableCell>
             <TableCell>{date(v.created_at)}</TableCell>
             <TableCell align="right">
-              <Button size="small" startIcon={<VisibilityIcon />} disabled={!d.access.preview} onClick={() => open(v.version_number, "preview")}>Preview</Button>
+              <Button size="small" startIcon={<VisibilityIcon />} disabled={!d.access.preview} onClick={() => setPreviewing(v.version_number)}>Preview</Button>
               <Button size="small" startIcon={<DownloadIcon />} disabled={!d.access.download} onClick={() => open(v.version_number, "download")}>Download</Button>
+              {canAddVersion && d.lifecycle_state !== "archived" && v.version_number !== Math.max(...d.versions.map((x) => x.version_number)) && v.status === "available" && (
+                <Button size="small" startIcon={<RestoreIcon />} disabled={restore.isPending} onClick={() => restore.mutate(v.version_number)}>Restore</Button>
+              )}
             </TableCell>
           </TableRow>
         ))}
@@ -189,6 +216,9 @@ export default function DocumentDetail() {
         {d.lifecycle_state === "archived" && canRestore && (
           <Button startIcon={<UnarchiveIcon />} onClick={() => change.mutate("unarchive")}>Restore from archive</Button>
         )}
+        {canShare && d.lifecycle_state !== "archived" && <Button startIcon={<ShareIcon />} onClick={() => setDialog("share")}>Share</Button>}
+        {canEdit && d.lifecycle_state !== "archived" && <Button startIcon={<EditIcon />} onClick={() => setDialog("edit")}>Edit details</Button>}
+        {canAddVersion && d.lifecycle_state !== "archived" && <Button variant="contained" startIcon={<UploadFileIcon />} onClick={() => setDialog("version")}>New version</Button>}
       </Stack>
       {message && <Alert severity="info" sx={{ mb: 2 }} onClose={() => setMessage("")}>{message}</Alert>}
       {layout === "stacked" ? (
@@ -209,6 +239,10 @@ export default function DocumentDetail() {
           <Grid size={{ xs: 12, md: 5 }}>{stack(approvalCard, sharesCard)}</Grid>
         </Grid>
       )}
+      <ShareDialog documentId={d.id} title={d.title} open={dialog === "share"} onClose={() => setDialog(null)} />
+      <NewVersionDialog documentId={d.id} basedOn={Math.max(...d.versions.map((v) => v.version_number), 0)} open={dialog === "version"} onClose={() => setDialog(null)} />
+      <EditDetailsDialog doc={d} open={dialog === "edit"} onClose={() => setDialog(null)} />
+      <PreviewDialog documentId={d.id} version={previewing ?? 1} open={previewing !== null} onClose={() => setPreviewing(null)} />
     </Box>
   );
 }

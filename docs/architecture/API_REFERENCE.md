@@ -100,6 +100,8 @@ Category policy fields: `approval_required`, `required_dimensions` (department, 
 | GET `/platform/ui-templates/{id}`, GET `.../versions` | platform administrator | Full configuration; version history with publish times |
 | POST `/platform/ui-templates/{id}/publish`, `/archive` | platform administrator | Publish makes it available to every organization at once; archive withdraws it (an archived template cannot be published again, import a new version). Both are audited as privileged |
 
+| GET `/directory?q=&limit=` | document.share | Active colleagues in your organization by part of their name (default 20, max 50): `membership_id`, `full_name`, `department` only. Excludes you and people who have left. Used by the Share dialog |
+
 Categories accept `policy.approval_steps` (list of `{type: user|role|department_manager, ref}`), only together with `approval_required`.
 
 Login with MFA on: `POST /auth/login` answers `401 {"detail":{"code":"mfa_required"}}` after a correct password; resend with `mfa_code` (authenticator or recovery code). Wrong codes count toward lockout.

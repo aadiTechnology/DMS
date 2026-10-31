@@ -7,6 +7,7 @@ from app.api import (
     audit,
     auth,
     dev_storage,
+    directory,
     documents,
     lifecycle,
     mfa,
@@ -38,6 +39,7 @@ app.include_router(versions.router)
 app.include_router(approvals.router)
 app.include_router(shares.router)
 app.include_router(lifecycle.router)
+app.include_router(directory.router)
 app.include_router(ui_templates.router)
 app.include_router(platform_ui.router)
 app.include_router(search.router)
