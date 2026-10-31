@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aaditech.example/schemas/ui-template-1.0.json",
+  "title": "Aadi UI template, schema version 1.0",
+  "description": "Every value is data from a fixed set or a bounded number or color. A template contains no code, no HTML and no free-form styling.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "key", "name", "description", "version", "theme", "layout", "density", "components", "pages"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "key": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "minLength": 3, "maxLength": 64 },
+    "name": { "type": "string", "pattern": "^[^<>]+$", "minLength": 1, "maxLength": 80 },
+    "description": { "type": "string", "pattern": "^[^<>]*$", "maxLength": 300 },
+    "version": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})$" },
+    "previewImage": {
+      "type": "string",
+      "pattern": "^(https://[A-Za-z0-9.-]+(:[0-9]+)?/[A-Za-z0-9_./%-]*\\.(png|jpg|jpeg|webp)|/ui-previews/[a-z0-9-]+\\.(png|jpg|jpeg|webp))$",
+      "maxLength": 300
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "colors", "typography", "radius", "shadow"],
+      "properties": {
+        "mode": { "enum": ["light", "dark"] },
+        "colors": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["primary", "secondary", "background", "surface", "textPrimary", "textSecondary", "border", "success", "warning", "error", "info", "chart"],
+          "properties": {
+            "primary": { "$ref": "#/definitions/color" },
+            "secondary": { "$ref": "#/definitions/color" },
+            "background": { "$ref": "#/definitions/color" },
+            "surface": { "$ref": "#/definitions/color" },
+            "textPrimary": { "$ref": "#/definitions/color" },
+            "textSecondary": { "$ref": "#/definitions/color" },
+            "border": { "$ref": "#/definitions/color" },
+            "success": { "$ref": "#/definitions/color" },
+            "warning": { "$ref": "#/definitions/color" },
+            "error": { "$ref": "#/definitions/color" },
+            "info": { "$ref": "#/definitions/color" },
+            "chart": { "type": "array", "minItems": 5, "maxItems": 5, "items": { "$ref": "#/definitions/color" } }
+          }
+        },
+        "typography": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fontFamily", "scale", "headingWeight"],
+          "properties": {
+            "fontFamily": { "enum": ["system-sans", "humanist", "geometric", "editorial", "compact-sans"] },
+            "scale": { "type": "number", "minimum": 0.8, "maximum": 1.3 },
+            "headingWeight": { "enum": [400, 500, 600, 700] }
+          }
+        },
+        "radius": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "shadow": { "enum": ["none", "soft", "medium", "strong"] }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sidebarVariant", "sidebarWidth", "headerVariant", "contentWidth", "pageSpacing", "navigationPosition"],
+      "properties": {
+        "sidebarVariant": { "enum": ["full", "floating", "rail-tree", "top"] },
+        "sidebarWidth": { "type": "integer", "minimum": 0, "maximum": 320 },
+        "headerVariant": { "enum": ["search", "minimal", "pill", "toolbar"] },
+        "contentWidth": { "enum": ["fluid", "contained", "narrow"] },
+        "pageSpacing": { "type": "integer", "minimum": 8, "maximum": 64 },
+        "navigationPosition": { "enum": ["left", "top"] }
+      }
+    },
+    "density": { "enum": ["compact", "comfortable", "spacious"] },
+    "components": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["card", "button", "table", "input", "dropdown", "tabs", "dialog", "badge"],
+      "properties": {
+        "card": { "enum": ["outlined", "elevated", "flat", "glass", "gradient"] },
+        "button": { "enum": ["solid", "soft", "outline", "pill"] },
+        "table": { "enum": ["zebra", "plain", "lined", "dense"] },
+        "input": { "enum": ["outlined", "filled", "underline"] },
+        "dropdown": { "enum": ["outlined", "filled", "underline"] },
+        "tabs": { "enum": ["underline", "pills", "segmented"] },
+        "dialog": { "enum": ["standard", "rounded", "flat"] },
+        "badge": { "enum": ["soft", "filled", "outlined", "dot"] }
+      }
+    },
+    "pages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dashboard", "documentExplorer", "documentDetails", "reports"],
+      "properties": {
+        "dashboard": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["layout", "grid", "widgets"],
+          "properties": {
+            "layout": { "enum": ["stats-and-panels", "dark-hero", "focus-list", "dense-grid"] },
+            "grid": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["columns"],
+              "properties": { "columns": { "enum": [6, 8, 12] } }
+            },
+            "widgets": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 11,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "visible", "order", "w", "h"],
+                "properties": {
+                  "id": { "enum": ["welcome", "stat-documents", "stat-pending", "stat-shared", "stat-storage", "chart-uploads", "chart-classification", "recent-documents", "approvals-queue", "activity", "expiring-soon"] },
+                  "visible": { "type": "boolean" },
+                  "order": { "type": "integer", "minimum": 1, "maximum": 50 },
+                  "w": { "type": "integer", "minimum": 1, "maximum": 12 },
+                  "h": { "type": "integer", "minimum": 1, "maximum": 4 }
+                }
+              }
+            }
+          }
+        },
+        "documentExplorer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["layout"],
+          "properties": { "layout": { "enum": ["table", "list", "grid", "tree-table"] } }
+        },
+        "documentDetails": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["layout"],
+          "properties": { "layout": { "enum": ["two-column", "tabbed", "stacked"] } }
+        },
+        "reports": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["layout"],
+          "properties": { "layout": { "enum": ["grid", "stacked"] } }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+  }
+}

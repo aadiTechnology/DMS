@@ -309,3 +309,12 @@ Live test `tests/test_storage_b2_live.py` run by the owner against a dedicated p
 **Tests executed (observed):** web type-check and production build pass; 5 unit tests pass; browser login of all 6 demo accounts PASS; a full narrated recording ran through 13 scenes and the MP4 decodes. Backend suite unchanged (346 passed at Sprint 17).
 
 **Bugs found while recording and fixed:** the upload form read category policy from the wrong place (the approval notice did not appear); two selector ambiguities in the recorder.
+
+## Sprint T1: UI template schema and validation (done)
+**Changed:** new package `@aaditech/ui-engine` (`packages/ui-engine`: JSON Schema, types, validator, tests, shared invalid-case fixtures); server validator `services/api/app/ui/templates.py` with its copy of the schema; `docs/architecture/UI_TEMPLATE_SCHEMA.md`. Modified existing files: `services/api/pyproject.toml` and `uv.lock` (new dependency `jsonschema`), root lockfile. No application behavior changed.
+
+**Decision (simple terms):** one schema file defines what a design template may contain. Both the browser and the server check every template against it, so a template that passes on one side passes on the other. Anything that could carry code or styling tricks (HTML, URLs in colors, free-form fonts) is simply not allowed. **Deviation from the T0 plan:** the server uses the shared JSON Schema through the `jsonschema` library instead of a separate Pydantic copy of the rules, which removes any chance of the two drifting apart; this adds one Python dependency (`jsonschema`) and one web dependency (`ajv`).
+
+**Tests executed (observed):** `@aaditech/ui-engine` 64 passed; server `tests/test_ui_template_schema.py` 72 passed; existing web build and tests unchanged and passing; `ruff` clean. The 49 shared invalid cases include HTML in names, CSS and URL injection in colors, `javascript:` and `data:` preview images, unknown fonts and variants, out-of-range numbers, extra properties, prototype-pollution keys, oversized and non-JSON input.
+
+**Not done yet:** database tables and APIs (T2), Platform Administrator and template management (T3), rendering (T4), user selection (T5). The backend suite was not re-run in full for this sprint; no existing backend file changed except dependency metadata.
