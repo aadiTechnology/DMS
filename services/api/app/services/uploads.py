@@ -38,7 +38,7 @@ from app.db.models import (
     Tag,
     TenantMembership,
 )
-from app.services import approvals, audit, extraction, search, taxonomy
+from app.services import approvals, audit, extraction, lifecycle, search, taxonomy
 from app.services.access import PUBLISHED
 from app.services.filetypes import FileRejected, check_declared_type, check_extension
 from app.services.metadata import validate_values
@@ -318,6 +318,8 @@ def finalize_available(
     if document.lifecycle_state not in PUBLISHED:  # first publication of this document
         document.lifecycle_state = "submitted" if approval_required else "approved"
         document.current_version_number = version.version_number
+        if not approval_required:
+            lifecycle.start_clock(db, document)
     elif not approval_required:  # a later version replaces the served one at once
         document.current_version_number = version.version_number
     # else: a later version in an approval category waits; readers keep the approved one

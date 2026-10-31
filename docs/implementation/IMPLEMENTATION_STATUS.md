@@ -281,3 +281,18 @@ Covered: upgrade/downgrade/upgrade round trip, no drift between ORM models and m
 
 ## Live Backblaze verification (addendum)
 Live test `tests/test_storage_b2_live.py` run by the owner against a dedicated private test bucket with a bucket-restricted key: **2 passed**. Verified live: private-bucket check, key capabilities and bucket restriction, upload, stat, read (latest and by file id), no-overwrite, signed download link with forced attachment. Found and fixed by the first run: header overrides on download links need a token issued with the same values (commit 6634cd7). **Still not verified live:** large multi-part uploads, server-side copy (restore), delete of all versions, key behavior under expiry/rotation. The test key should be deleted when testing ends.
+
+## Sprint 17: Retention, archive, legal hold and deletion approval (done)
+**Changed:** migration `0014` (retention/review/archive/delete columns, `deleted` lifecycle state, `legal_holds`, `deletion_requests`, `purged_at`), `app/services/lifecycle.py`, `app/api/lifecycle.py`, clock start at release (uploads and approvals), deleted documents hidden in the policy engine and the SQL visibility mirror.
+
+**Decision (simple terms):** each category says how long documents must be kept and when to re-review them; the clock starts when a document is released. People can archive a released document (still readable, no more edits) and bring it back. A compliance person can put a legal hold on a document, which stops deletion until released. Deleting needs a reason and a second person's approval, and is refused during a hold or before the keep-until date; approval permanently removes the files and leaves a record that the document existed. A "due soon" list shows what is approaching its retention end or review date.
+
+**Requirements touched:** PRD 8.5 (retention, archive, legal hold, deletion approval, review reminders data), 15 (disposal with audit). Not complete: reminder delivery (notifications sprint), automatic archive on a schedule, bulk operations, retention rules by classification, restoring a deleted document (intentionally impossible).
+
+**Decisions to note:** legal hold uses `document.approve_delete` instead of a new permission; hold blocks deletion but not archiving; deleted documents are unreadable even to administrators; Backblaze delete removes all file versions (verified on the simulator and local storage only; the live delete path is not yet exercised).
+
+**Bugs found by tests and fixed:** model/migration drift on the retention index; test helper assumed a missing-file exception.
+
+**Deployment readiness (same session, at the owner's request):** Coolify/Linux support added: `services/api/Dockerfile`, `docker-entrypoint.sh`, `docker-compose.coolify.yml`, `.env.coolify.example`, `.gitattributes`, `app/jobs.py` (scheduled maintenance), `docs/deployment/COOLIFY_DEPLOYMENT.md`. Checked locally: image builds, runs as non-root, migrates an empty database to head, health check OK, production settings refusal, compose validation, job command. Not run on a real Coolify server.
+
+**Tests executed (observed):** 13 lifecycle tests and 3 job tests passing; migration drift test passing; full suite `uv run pytest -q`: 346 passed, 2 skipped (live B2), started before the 3 job tests were added; those were run separately (3 passed). `ruff` clean.

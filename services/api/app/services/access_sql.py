@@ -10,7 +10,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
-from sqlalchemy import and_, exists, false, or_, select, true
+from sqlalchemy import and_, exists, false, or_, select
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -91,8 +91,9 @@ def visible_clause(viewer: Viewer):
     """Boolean SQL expression over `documents` for the metadata-visibility rule."""
     if "document.view_metadata" not in viewer.permissions:
         return false()
+    not_deleted = Document.lifecycle_state != "deleted"
     if PRIVILEGE in viewer.permissions:
-        return true()  # privileged path: audited by the caller when results are returned
+        return not_deleted  # privileged path: audited by the caller when results are returned
     published = Document.lifecycle_state.in_(PUBLISHED)
     restricted = and_(
         published, Document.classification.in_(("confidential", "highly_confidential"))
@@ -127,4 +128,4 @@ def visible_clause(viewer: Viewer):
         )
     if viewer.project_ids:
         conditions.append(and_(confidential, _associated("project", viewer.project_ids)))
-    return or_(*conditions)
+    return and_(not_deleted, or_(*conditions))

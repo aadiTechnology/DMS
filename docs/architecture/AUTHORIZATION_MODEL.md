@@ -124,5 +124,14 @@ Evaluation order:
 - **Rights:** view (metadata and preview) and download are separate; download implies view. Optional expiry (future, with time zone). Sharing again with the same person updates the share.
 - **Revoking** is immediate for every version and keeps the row as history; expired shares stop working without any job. Everything is audited (`share.created|updated|revoked`; notification hook).
 
-## 12. Planned
+## 12. Retention, archive, legal hold and deletion (Sprint 17, implemented and tested)
+
+- **Clocks:** when a document is first released (no approval needed, or the final approval), the retention end date and the next review date are set from the category version it was created under (`retention_days`, `review_interval_days`). Existing documents from before this sprint have none.
+- **Archive / restore:** `document.archive` / `document.restore` plus the same "may modify" rule as edits (owner, uploader, privileged administrator). Only released documents without a version awaiting review can be archived. Archived documents stay readable and searchable but closed to new versions and edits.
+- **Legal hold:** needs `document.approve_delete` (administrators and any role given it). A reason is required to place and to release; one active hold per document. While active, deletion is refused.
+- **Deletion:** a person who may modify the document and holds `document.request_delete` asks with a reason; someone else holding `document.approve_delete` (never the requester, administrators included) approves or rejects (rejection needs a reason). Refused at request and again at approval while a hold is active or the retention period has not ended. Approval removes every stored file, closes shares and empties the search entry in one transaction (a storage failure rolls everything back); the document stays as a tombstone (`deleted`) that **nobody can open, administrators included**; history and audit remain.
+- **Reminders:** `GET /lifecycle/due` lists visible documents whose retention ends or review falls due within N days; the notifications sprint will send them.
+- Everything is audited (`document.archived|unarchived`, `document.legal_hold_placed|released`, `deletion.requested|approved|rejected|cancelled`).
+
+## 13. Planned
 RBAC roles/permissions, document-level policy (classification, ownership, grants, workflow state, legal hold), admin-privilege audit: Sprint 5 onward.

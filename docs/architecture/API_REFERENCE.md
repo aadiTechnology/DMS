@@ -79,6 +79,14 @@ Category policy fields: `approval_required`, `required_dimensions` (department, 
 | GET `/documents/{id}/shares` | same | Active shares (`history=true` adds expired and revoked) |
 | GET `/shares/with-me`, GET `/shares/by-me` | signed in | Active shares to you (only for documents you can still see) or made by you, with title and classification |
 
+| GET `/documents/{id}/lifecycle` | document.view_metadata + access policy | State, retention end, review date, archive time, active legal hold, pending deletion request, deletion blockers |
+| POST `/documents/{id}/archive`, POST `/documents/{id}/unarchive` | document.archive / document.restore + may-modify | 409 unless released (archive) or archived (unarchive); archive also 409 while a version awaits review |
+| POST/DELETE `/documents/{id}/legal-hold` | document.approve_delete | Body `reason` (required). 409 if already held; DELETE 404 if none |
+| POST `/documents/{id}/deletion-requests` | document.request_delete + may-modify | Body `reason`. 409 while a hold, retention period, pending review or pending request applies |
+| GET `/deletion-requests` | document.approve_delete | Pending requests for documents you can see |
+| POST `/deletion-requests/{id}/approve` / `reject` / `cancel` | approve_delete (not the requester) / approve_delete, `reason` required / requester | Approve removes the files (502 if storage is down; nothing changes). 403 for your own request |
+| GET `/lifecycle/due?days=30` | document.archive | Documents with retention ending or review due within `days` |
+
 Categories accept `policy.approval_steps` (list of `{type: user|role|department_manager, ref}`), only together with `approval_required`.
 
 Login with MFA on: `POST /auth/login` answers `401 {"detail":{"code":"mfa_required"}}` after a correct password; resend with `mfa_code` (authenticator or recovery code). Wrong codes count toward lockout.

@@ -191,6 +191,8 @@ def decide(
     if membership is None:
         return _deny("not_a_member")
 
+    if document.lifecycle_state == "deleted":  # a tombstone: nobody reads it, not even admins
+        return _deny("deleted")
     is_owner = document.owner_membership_id == membership.id
     is_uploader = document.created_by_user_id == user_id
     privileged = Decision(True, "administrator_privilege", True) if PRIVILEGE in perms else None

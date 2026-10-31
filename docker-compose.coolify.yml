@@ -1,0 +1,67 @@
+# Coolify (Docker Compose build pack) deployment for the DMS API, with its own Postgres and
+# ClamAV. Set every variable below in the Coolify "Environment Variables" screen; none has a
+# usable default for secrets. See docs/deployment/COOLIFY_DEPLOYMENT.md.
+services:
+  api:
+    build:
+      context: ./services/api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+    expose:
+      - "8000"
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DATABASE_URL: postgresql+psycopg://dms:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/dms
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY (32+ random characters)}
+      APP_BASE_URL: ${APP_BASE_URL:?set APP_BASE_URL}
+      API_BASE_URL: ${API_BASE_URL:?set API_BASE_URL}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-backblaze}
+      DMS_B2_KEY_ID: ${DMS_B2_KEY_ID:-}
+      DMS_B2_APP_KEY: ${DMS_B2_APP_KEY:-}
+      DMS_B2_BUCKET_NAME: ${DMS_B2_BUCKET_NAME:-}
+      SCANNER_BACKEND: ${SCANNER_BACKEND:-clamav}
+      CLAMD_HOST: clamav
+      CLAMD_PORT: "3310"
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-smtp}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
+      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD:-}
+      SSO_GOOGLE_CLIENT_ID: ${SSO_GOOGLE_CLIENT_ID:-}
+      SSO_MICROSOFT_CLIENT_ID: ${SSO_MICROSOFT_CLIENT_ID:-}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:-}
+      DMS_MAX_UPLOAD_BYTES: ${DMS_MAX_UPLOAD_BYTES:-104857600}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+    volumes:
+      - dms_uploads_tmp:/data/uploads-tmp
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: dms
+    volumes:
+      - dms_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dms -d dms"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  clamav:
+    image: clamav/clamav:1.4
+    restart: unless-stopped
+    volumes:
+      - dms_clamav:/var/lib/clamav
+
+volumes:
+  dms_pgdata:
+  dms_uploads_tmp:
+  dms_clamav:

@@ -1,0 +1,5 @@
+# Shell scripts and Dockerfiles must keep Unix line endings or they fail inside Linux containers.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.bat text eol=crlf

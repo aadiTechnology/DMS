@@ -37,6 +37,8 @@ TABLES = {
     "approval_requests",
     "approval_assignments",
     "approval_events",
+    "legal_holds",
+    "deletion_requests",
 }
 
 

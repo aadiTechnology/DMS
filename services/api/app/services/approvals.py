@@ -364,7 +364,10 @@ def _finish_approved(db: Session, request, document: Document, version: Document
     request.status, request.decided_at = "approved", _now()
     version.review_status = "approved"
     if document.lifecycle_state not in PUBLISHED:
+        from app.services import lifecycle  # local: lifecycle imports this module
+
         document.lifecycle_state = "approved"
+        lifecycle.start_clock(db, document)
     previous = document.current_version_number
     document.current_version_number = max(previous or 0, version.version_number)
     changed = document.current_version_number != previous

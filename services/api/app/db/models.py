@@ -568,7 +568,7 @@ class Tag(Base):
     created_at: Mapped[datetime] = created_at_col()
 
 
-LIFECYCLE_STATES = "('draft','submitted','under_review','approved','rejected','archived')"
+LIFECYCLE_STATES = "('draft','submitted','under_review','approved','rejected','archived','deleted')"
 VERSION_STATUSES = "('pending','receiving','available','quarantined','rejected','abandoned')"
 
 
@@ -581,6 +581,7 @@ class Document(Base):
         CheckConstraint(f"lifecycle_state IN {LIFECYCLE_STATES}", name="lifecycle_state"),
         Index("ix_documents_tenant_id_category_id", "tenant_id", "category_id"),
         Index("ix_documents_tenant_id_created_by_user_id", "tenant_id", "created_by_user_id"),
+        Index("ix_documents_tenant_id_retention_until", "tenant_id", "retention_until"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -601,6 +602,10 @@ class Document(Base):
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
     row_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    retention_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    review_due_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = created_at_col()
     updated_at: Mapped[datetime] = created_at_col()
 
@@ -685,6 +690,7 @@ class DocumentVersion(Base):
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     object_key: Mapped[str] = mapped_column(String(1024), nullable=False)
     storage_file_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     scan_status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
     scan_detail: Mapped[str | None] = mapped_column(String(200), nullable=True)
     reject_reason: Mapped[str | None] = mapped_column(String(60), nullable=True)
@@ -867,3 +873,63 @@ class ApprovalEvent(Base):
         server_default=func.now(),
         default=lambda: datetime.now(UTC),
     )
+
+
+class LegalHold(Base):
+    """While a hold is active the document cannot be deleted. Released holds stay as history."""
+
+    __tablename__ = "legal_holds"
+    __table_args__ = (
+        Index(
+            "uq_legal_holds_active",
+            "document_id",
+            unique=True,
+            postgresql_where=text("released_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="RESTRICT"), nullable=False
+    )
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    placed_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    placed_at: Mapped[datetime] = created_at_col()
+    released_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    released_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    release_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class DeletionRequest(Base):
+    __tablename__ = "deletion_requests"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending','approved','rejected','cancelled')", name="status"),
+        Index(
+            "uq_deletion_requests_pending",
+            "document_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = _tenant_fk()
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="RESTRICT"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    requested_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    requested_at: Mapped[datetime] = created_at_col()
+    decided_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    decision_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
