@@ -1,0 +1,47 @@
+1
+00:00:00,000 --> 00:00:23,155
+This video shows what people can now do with a document in the D M S web application, without leaving the browser: edit its details, add and restore versions, preview it on the page, share it, discuss a review, place a legal hold, and delete it with a second person approval. It uses a recording copy of the demo organization with sample documents.
+
+2
+00:00:23,610 --> 00:00:44,780
+Sameer is an employee. The toggle above the list narrows it to the documents he uploaded. He opens an invoice and chooses Edit details. He can correct the title and the extra fields its category asks for. Every save is checked against the version he started from, so he can never overwrite someone else’s change.
+
+3
+00:00:45,233 --> 00:01:08,838
+A scanned copy of the paid invoice arrives. Sameer chooses New version, selects the file and says what changed. The file is checked and scanned, and becomes version two, the current one. Version one is kept. If a colleague had added a version in the meantime, the system would refuse and tell him, rather than silently replacing their work.
+
+4
+00:01:09,300 --> 00:01:32,931
+Preview now opens the file on the page for PDFs and images, using a short lived secure link. Other file types, such as the original Excel sheet, say that they have no preview and can be downloaded instead. If the old version turns out to be the right one, Restore makes a new version from it. Nothing is rewritten, so the history stays complete.
+
+5
+00:01:33,382 --> 00:01:53,963
+Share opens a dialog. Sameer types part of a colleague’s name, chooses Priya, gives her view and download access, and shares. The list shows who has access, and Stop sharing removes it at any time, for every version at once. Sharing can never give someone more than their role allows.
+
+6
+00:01:54,427 --> 00:02:07,634
+Priya signs in and finds the invoice on her Shared page, with the access she was given. It does not appear anywhere else in her library, because the invoice is confidential and belongs to another department.
+
+7
+00:02:08,085 --> 00:02:18,682
+A contract that needs approval is waiting for review. Its submitter can add a comment for the reviewers on the document page, here a note that the signed copy is attached.
+
+8
+00:02:19,137 --> 00:02:37,938
+Meera, the reviewer, finds the signature page missing and rejects the contract. A reason is required. Sameer sees the decision and its reason on the document and, once he has fixed the problem, chooses Send for review again. The earlier rejection stays on record.
+
+9
+00:02:38,404 --> 00:02:58,970
+The paid invoice has passed its keep-until date, so it could be deleted. But Asha, the administrator, places a legal hold on it, with a reason that is recorded. While the hold is on, a deletion request is refused. Releasing the hold, again with a reason, makes deletion possible.
+
+10
+00:02:59,429 --> 00:03:25,494
+Sameer, who owns the invoice, asks for it to be deleted and gives a reason. Nothing is removed yet. A different person with approval rights must decide. Asha opens the Retention page, sees the request, and after a clear warning that the files will be permanently removed, approves it. The invoice disappears from every list. Only a record that it existed remains.
+
+11
+00:03:25,948 --> 00:03:43,254
+The Due soon tab lists documents whose keep-until date or review date is approaching or has passed, so nothing is kept or deleted by accident. Here the contract template reaches its date within two weeks. This list is what the later notification feature will send as reminders.
+
+12
+00:03:43,709 --> 00:04:09,149
+In short: edit with overwrite protection, add and restore versions, preview on the page, share and stop sharing, discuss and resubmit reviews, hold, and delete only with a reason, a second approver and no hold. Still to come in the web application are the administration screens for users, categories and the organization, and the account pages for invitations and two step verification.

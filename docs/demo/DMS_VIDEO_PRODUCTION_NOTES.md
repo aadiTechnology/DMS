@@ -55,3 +55,13 @@ Scene text lives in the `scenes` array of the script; edit it and re-run (speech
 **Regenerate:** use a fresh demo database as described above (the seed now also publishes the five designs and makes the demo administrator a platform administrator), start the demo (`start_demo.bat`), then `node videos/record-appearance.mjs`. Environment overrides: `DMS_WEB_URL`, `DEMO_ACCESS_FILE`.
 
 **Limits:** voice and subtitle conventions are the same as video 01 (Windows voice, one caption per scene); the dashboard and reports designs are mentioned as future, not shown; I looked at 3 of the 11 verification frames, not all.
+
+## Video 03: working with documents (Sprint W2a)
+
+`videos/03-dms-working-with-documents.mp4` (about 4 minutes, 12 scenes) with `.srt`, `.vtt` and `.csv`, recorded by `videos/record-documents.mjs` on the shared pipeline. It shows: "Uploaded by me" and editing details, adding a version, previewing a PDF on the page, restoring an old version, sharing with a colleague and the colleague seeing it, a comment on a review, rejection with a reason and sending for review again, a legal hold refusing a deletion request, deletion with a second approver and the permanent-removal warning, and the due-soon list.
+
+**Recorded on a separate recording database** (created, seeded and deleted again), so the demo you browse was not changed; its sign-in details for that run were never shown. Two situations were set up directly in the database to keep the video short and are stated in the narration: the paid invoice's keep-until date was moved into the past (so deletion is possible), and the contract template's date was moved to about twelve days ahead (so it appears in Due soon).
+
+**Regenerate:** create a fresh database whose name contains `demo`, run the migrations and `scripts/seed_demo.py` (set `DEMO_ACCESS_FILE` so your real access file is not overwritten), start the API and `npx vite --port <port>` against it, then `DMS_WEB_URL=http://localhost:<port> PGDATABASE=<database> DEMO_ACCESS_FILE=<file> node videos/record-documents.mjs`.
+
+**Limits:** I looked at 3 of the 12 verification frames. Subtitles are one caption per scene. The new-version upload shows no progress bar for large files because the demo files are tiny.
