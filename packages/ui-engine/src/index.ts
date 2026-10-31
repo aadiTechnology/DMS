@@ -1,2 +1,12 @@
 export type { Color, TemplateColors, UiTemplate, ValidationResult, WidgetConfig, WidgetId } from "./types";
 export { uiTemplateSchema, validateTemplate } from "./validator";
+export { SYSTEM_TEMPLATE } from "./systemTemplate";
+export { DENSITY, FONT_STACKS, SHADOW_VALUES, cssVariables } from "./tokens";
+export { buildMuiTheme } from "./muiTheme";
+export { readCachedTemplate, resolveAppearance, writeCachedTemplate } from "./resolver";
+export type { Appearance, EffectiveAnswer, TemplateSource } from "./resolver";
+export { resolveDashboard } from "./widgets";
+export type { ResolvedDashboard, ResolvedWidget } from "./widgets";
+export { TemplateProvider, useTemplate } from "./TemplateProvider";
+export { LayoutRenderer } from "./LayoutRenderer";
+export type { LayoutRendererProps, NavItem } from "./LayoutRenderer";

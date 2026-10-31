@@ -1,71 +1,88 @@
+import { LayoutRenderer, type NavItem } from "@aaditech/ui-engine";
 import AccountCircle from "@mui/icons-material/AccountCircle";
 import ApartmentIcon from "@mui/icons-material/Apartment";
 import ArticleIcon from "@mui/icons-material/Article";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
-import LogoutIcon from "@mui/icons-material/Logout";
+import FolderIcon from "@mui/icons-material/Folder";
 import ShareIcon from "@mui/icons-material/Share";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import {
-  AppBar, Box, Button, Drawer, List, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography,
-} from "@mui/material";
+import { Box, Button, List, ListItemButton, ListItemText, Typography } from "@mui/material";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { api, getSession, signOut } from "./api";
 import { useCan } from "./App";
+import { useCategories } from "./queries";
 
-const WIDTH = 232;
+const TITLES: [string, string][] = [
+  ["/upload", "Upload"],
+  ["/approvals", "Approvals"],
+  ["/shared", "Shared"],
+  ["/organization", "Organization"],
+  ["/account", "Account"],
+  ["/documents", "Documents"],
+];
+
+/** Folder-style list of categories, shown beside the icons by designs that use the "rail-tree" layout. */
+function CategoryPanel() {
+  const categories = useCategories();
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary" sx={{ px: 1 }}>CATEGORIES</Typography>
+      <List dense>
+        <ListItemButton component={NavLink} to="/documents" end>
+          <FolderIcon fontSize="small" sx={{ mr: 1 }} />
+          <ListItemText primary="All documents" />
+        </ListItemButton>
+        {categories.data?.map((c) => (
+          <ListItemButton key={c.id} component={NavLink} to={`/documents?category=${c.id}`} sx={{ pl: 1 + c.depth * 2 }}>
+            <FolderIcon fontSize="small" sx={{ mr: 1 }} />
+            <ListItemText primary={c.name} />
+          </ListItemButton>
+        ))}
+      </List>
+    </Box>
+  );
+}
 
 export default function Layout({ children }: { children: ReactNode }) {
   const client = useQueryClient();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const canUpload = useCan("document.upload");
   const queue = useQuery({ queryKey: ["approvals", "queue"], queryFn: () => api<unknown[]>("/approvals/queue") });
   const waiting = queue.data?.length ? ` (${queue.data.length})` : "";
-  const items = [
-    { to: "/documents", text: "Documents", icon: <ArticleIcon />, show: true },
-    { to: "/upload", text: "Upload", icon: <UploadFileIcon />, show: canUpload },
-    { to: "/approvals", text: `Approvals${waiting}`, icon: <FactCheckIcon />, show: true },
-    { to: "/shared", text: "Shared", icon: <ShareIcon />, show: true },
-    { to: "/organization", text: "Organization", icon: <ApartmentIcon />, show: true },
-    { to: "/account", text: "Account", icon: <AccountCircle />, show: true },
+  const items: (NavItem & { show: boolean })[] = [
+    { to: "/documents", label: "Documents", icon: <ArticleIcon />, show: true },
+    { to: "/upload", label: "Upload", icon: <UploadFileIcon />, show: canUpload },
+    { to: "/approvals", label: `Approvals${waiting}`, icon: <FactCheckIcon />, show: true },
+    { to: "/shared", label: "Shared", icon: <ShareIcon />, show: true },
+    { to: "/organization", label: "Organization", icon: <ApartmentIcon />, show: true },
+    { to: "/account", label: "Account", icon: <AccountCircle />, show: true },
   ];
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      <AppBar position="fixed" color="inherit" variant="outlined" sx={{ zIndex: 1201, borderLeft: 0, borderRight: 0, borderTop: 0 }}>
-        <Toolbar>
-          <Typography variant="h6" color="primary" sx={{ fontWeight: 700, flexGrow: 1 }}>
-            DMS · Document Management
-          </Typography>
-          <Typography variant="body2" sx={{ mr: 2 }} data-testid="signed-in-as">
-            {getSession()?.email}
-          </Typography>
-          <Button
-            startIcon={<LogoutIcon />}
-            onClick={async () => {
-              await signOut();
-              client.clear();
-              window.location.assign("/");
-            }}
-          >
-            Sign out
+    <LayoutRenderer
+      brand="DMS"
+      title={TITLES.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? "Documents"}
+      navItems={items.filter((i) => i.show)}
+      linkComponent={NavLink}
+      userLabel={getSession()?.email ?? ""}
+      onSignOut={async () => {
+        await signOut();
+        client.clear();
+        window.location.assign("/");
+      }}
+      onSearch={(q) => navigate(`/documents?q=${encodeURIComponent(q)}`)}
+      secondaryPanel={<CategoryPanel />}
+      headerActions={
+        canUpload ? (
+          <Button component={NavLink} to="/upload" variant="contained" size="small">
+            Upload
           </Button>
-        </Toolbar>
-      </AppBar>
-      <Drawer variant="permanent" sx={{ width: WIDTH, "& .MuiDrawer-paper": { width: WIDTH, boxSizing: "border-box", pt: 8 } }}>
-        <List>
-          {items
-            .filter((i) => i.show)
-            .map((i) => (
-              <ListItemButton key={i.to} component={NavLink} to={i.to} sx={{ "&.active": { bgcolor: "action.selected", color: "primary.main" } }}>
-                <ListItemIcon sx={{ color: "inherit", minWidth: 40 }}>{i.icon}</ListItemIcon>
-                <ListItemText primary={i.text} />
-              </ListItemButton>
-            ))}
-        </List>
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8, minWidth: 0 }}>
-        {children}
-      </Box>
-    </Box>
+        ) : undefined
+      }
+    >
+      {children}
+    </LayoutRenderer>
   );
 }

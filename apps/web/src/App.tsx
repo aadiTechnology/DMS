@@ -1,5 +1,8 @@
+import {
+  SYSTEM_TEMPLATE, TemplateProvider, readCachedTemplate, resolveAppearance, writeCachedTemplate, type EffectiveAnswer,
+} from "@aaditech/ui-engine";
 import { useQuery } from "@tanstack/react-query";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { api, getSession, signedOut } from "./api";
 import Layout from "./Layout";
@@ -16,28 +19,49 @@ const PermissionContext = createContext<Set<string>>(new Set());
 export const usePermissions = () => useContext(PermissionContext);
 export const useCan = (code: string) => usePermissions().has(code);
 
+/** Query key of the signed-in person's design preference; invalidate it after changing the choice. */
+export const APPEARANCE_KEY = ["ui-preferences"] as const;
+
+const storage = typeof localStorage === "undefined" ? undefined : localStorage;
+
 function Authenticated() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["permissions"],
-    queryFn: () => api<{ permissions: string[] }>("/me/permissions"),
+  const email = getSession()?.email ?? "";
+  const permissions = useQuery({ queryKey: ["permissions"], queryFn: () => api<{ permissions: string[] }>("/me/permissions") });
+  const preference = useQuery({
+    queryKey: APPEARANCE_KEY,
+    queryFn: () => api<{ effective: EffectiveAnswer }>("/me/ui-preferences"),
   });
-  if (isLoading) return null;
+  const cached = useMemo(() => readCachedTemplate(storage, email), [email]);
+  const appearance = preference.data
+    ? resolveAppearance(preference.data.effective, cached)
+    : { template: cached ?? SYSTEM_TEMPLATE, source: cached ? ("cache" as const) : ("fallback" as const) };
+
+  useEffect(() => {
+    if (preference.data && appearance.source !== "cache" && appearance.source !== "fallback") {
+      writeCachedTemplate(storage, email, appearance.template);
+    }
+  }, [preference.data, appearance.source, appearance.template, email]);
+
   return (
-    <PermissionContext.Provider value={new Set(data?.permissions ?? [])}>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Navigate to="/documents" replace />} />
-          <Route path="/documents" element={<Documents />} />
-          <Route path="/documents/:id" element={<DocumentDetail />} />
-          <Route path="/upload" element={<Upload />} />
-          <Route path="/approvals" element={<Approvals />} />
-          <Route path="/shared" element={<Shared />} />
-          <Route path="/organization" element={<Organization />} />
-          <Route path="/account" element={<Account />} />
-          <Route path="*" element={<Navigate to="/documents" replace />} />
-        </Routes>
-      </Layout>
-    </PermissionContext.Provider>
+    <TemplateProvider template={appearance.template}>
+      {permissions.isLoading ? null : (
+        <PermissionContext.Provider value={new Set(permissions.data?.permissions ?? [])}>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Navigate to="/documents" replace />} />
+              <Route path="/documents" element={<Documents />} />
+              <Route path="/documents/:id" element={<DocumentDetail />} />
+              <Route path="/upload" element={<Upload />} />
+              <Route path="/approvals" element={<Approvals />} />
+              <Route path="/shared" element={<Shared />} />
+              <Route path="/organization" element={<Organization />} />
+              <Route path="/account" element={<Account />} />
+              <Route path="*" element={<Navigate to="/documents" replace />} />
+            </Routes>
+          </Layout>
+        </PermissionContext.Provider>
+      )}
+    </TemplateProvider>
   );
 }
 
@@ -48,6 +72,12 @@ export default function App() {
     signedOut.addEventListener("out", out);
     return () => signedOut.removeEventListener("out", out);
   }, []);
-  if (!signedIn) return <Login onSignedIn={() => setSignedIn(true)} />;
+  if (!signedIn) {
+    return (
+      <TemplateProvider template={SYSTEM_TEMPLATE}>
+        <Login onSignedIn={() => setSignedIn(true)} />
+      </TemplateProvider>
+    );
+  }
   return <Authenticated />;
 }

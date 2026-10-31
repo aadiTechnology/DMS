@@ -336,3 +336,14 @@ Live test `tests/test_storage_b2_live.py` run by the owner against a dedicated p
 **Tests executed (observed):** 12 new platform tests (authorization, immediate revocation, MFA rule, operator command rules, application roles cannot change the list, import to publish to a sixth design visible to a user without redeploy, version history and unique keys, invalid and oversized uploads, tenant-owned templates out of scope, audit); full backend suite 454 passed, 2 skipped (live Backblaze), 0 failed; `ruff` clean.
 
 **Not done yet:** applying designs in the web app (T4), the Appearance page and a template import screen (T5).
+
+## Sprint T4: UI rendering engine and web integration (done)
+**Changed:** `@aaditech/ui-engine` gains the engine (tokens, built-in template, resolver with cache, component variant theme, TemplateProvider, LayoutRenderer, dashboard widget resolver) and `engine.test.tsx`; web app: `App.tsx` (loads the person's design and applies it), `Layout.tsx` (now uses the engine's shell), `Documents.tsx` (list presets, category and search from the URL), `DocumentDetail.tsx` (detail presets), `main.tsx`; the old fixed `theme.ts` is removed. No backend change.
+
+**Decision (simple terms):** the web app now looks the way the signed-in person's chosen design says: colours, type, rounded corners, spacing, the sidebar or top navigation, the header, and how tables, cards, buttons, tabs and dialogs look. If their design cannot be loaded or fails the safety check, they see their last design from this device, and failing that the built-in one. The login page always uses the built-in design. Approximation to flag: the built-in design's layout (sidebar with the page title in the header) is close to, not identical to, the earlier fixed layout.
+
+**Verified in the real app (observed):** with the five designs stored in the demo database and chosen through the API, the same sign-in showed the full sidebar, the premium dark theme, the top navigation, the floating sidebar with card grid, and the icon rail with category panel and tabbed details, with no browser errors after one list-key fix.
+
+**Tests executed (observed):** `@aaditech/ui-engine` 94 passed (variants for every allowed value build a theme; the resolver never applies an invalid template; cache handling; 16 shell combinations render and escape output); web 5 passed; web and engine production builds green. Backend unchanged since T3 (454 passed).
+
+**Not done yet:** the Appearance page (choose, preview, apply, reset) and the Platform Administrator import screen (T5). The recorded walkthrough video script still searches by an older label, so recording again needs a small selector update.

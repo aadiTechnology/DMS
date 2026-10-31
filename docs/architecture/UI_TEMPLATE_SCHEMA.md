@@ -58,3 +58,19 @@ On a Coolify server run the same command in the `api` container's terminal. The 
 A new version of an existing key is stored in `ui_template_versions`; the live version stays unchanged until the new one is published. The same or an older version is refused.
 
 **Asking Claude for a new design:** give it `packages/ui-engine/schema/ui-template.schema.json` and one of the files in `design-showcase/templates/` as the example, ask for a JSON file only (a new `key`, `name`, `description` and `version`), then run it through the validate call before importing. Only values allowed by the schema will be accepted.
+
+## The rendering engine (Sprint T4)
+
+`@aaditech/ui-engine` turns a validated template into a working look. It owns appearance only: it receives everything it shows as props and does no sign-in, permission checks, routing or data loading.
+
+| Piece | What it does |
+|---|---|
+| `resolveAppearance()` | Takes the server's `effective` answer, validates the configuration again in the browser and returns the template to use. Anything invalid is skipped: the last cached design for that person, else the built-in design |
+| `readCachedTemplate()` / `writeCachedTemplate()` | Remember the last design per person on this device so a page load does not flash the default |
+| `SYSTEM_TEMPLATE` | The built-in design, the last step of the fallback chain; it passes the same schema as stored templates |
+| `buildMuiTheme()` | The component variant resolver: palette, type, corner radius, density and the eight component variants (card, button, table, input, dropdown, tabs, dialog, badge) as MUI theme rules. Each variant is a fixed branch; a template only chooses between them |
+| `TemplateProvider` | Applies the theme and `--dms-*` CSS variables; `useTemplate()` lets a page read which preset layout to use |
+| `LayoutRenderer` | The application shell: four navigation layouts (full sidebar, floating sidebar, icon rail with a side panel, top bar) and four headers (search, minimal, pill, toolbar) |
+| `resolveDashboard()` | Visible widgets in order with sizes clamped to the grid |
+
+**In the web app** the shell, theme, document list (table, list or grid presets) and document detail (two-column, stacked or tabbed presets) now follow the person's design. `tree-table` in a template is shown as the table preset (the category panel of the rail layout provides the tree). **The dashboard and reports page presets and widgets are resolved but not drawn yet, because those screens do not exist in the application.** Changing design never changes what is loaded or what the person may do.
