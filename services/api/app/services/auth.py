@@ -6,14 +6,16 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.security import (
     create_access_token,
+    hash_password,
     hash_token,
     new_refresh_token,
+    validate_password,
     verify_password,
 )
 from app.db.models import Tenant, TenantMembership, User, UserSession
@@ -202,4 +204,46 @@ def logout(db: Session, session_id: uuid.UUID) -> None:
             action="auth.logout",
             resource_type="session",
             resource_id=session.id,
+        )
+
+
+class PasswordError(Exception):
+    """A user-safe reason the password could not be changed."""
+
+
+def change_password(
+    db: Session, user_id: uuid.UUID, session_id: uuid.UUID, current: str, new: str
+) -> None:
+    """Change the password of a signed-in person. Other sessions are signed out; this one stays."""
+    user = db.get(User, user_id)
+    if user is None or not verify_password(user.password_hash, current):
+        raise PasswordError("The current password is not correct")
+    if current == new:
+        raise PasswordError("Choose a password different from the current one")
+    try:
+        validate_password(new, user.email)
+    except ValueError as exc:
+        raise PasswordError(str(exc)) from None
+    user.password_hash = hash_password(new)
+    db.execute(
+        update(UserSession)
+        .where(
+            UserSession.user_id == user.id,
+            UserSession.revoked_at.is_(None),
+            UserSession.id != session_id,
+        )
+        .values(revoked_at=_now(), revoked_reason="password_changed")
+    )
+    for tenant_id in db.scalars(
+        select(TenantMembership.tenant_id).where(
+            TenantMembership.user_id == user.id, TenantMembership.status == "active"
+        )
+    ):
+        audit.record(
+            db,
+            tenant_id=tenant_id,
+            actor_user_id=user.id,
+            action="auth.password_changed",
+            resource_type="user",
+            resource_id=user.id,
         )

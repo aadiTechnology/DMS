@@ -119,15 +119,27 @@ export async function api<T = unknown>(path: string, opts: Options = {}): Promis
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
-export async function signIn(email: string, password: string, mfaCode?: string) {
+export async function signIn(email: string, password: string, mfaCode?: string, tenantId?: string) {
   const res = await send("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, mfa_code: mfaCode || undefined }),
+    body: JSON.stringify({ email, password, mfa_code: mfaCode || undefined, tenant_id: tenantId || undefined }),
   });
   const body = (await res.json().catch(() => ({}))) as Partial<Tokens> & { detail?: unknown };
   if (!res.ok) throw new ApiError(res.status, body.detail);
   setSession({ access: body.access_token!, refresh: body.refresh_token!, email });
+}
+
+/** Public (no sign-in) call; returns the parsed body or throws an ApiError. */
+export async function publicPost<T = unknown>(path: string, body: unknown): Promise<T> {
+  const res = await send(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+  if (!res.ok) throw new ApiError(res.status, data.detail ?? res.statusText);
+  return data as T;
+}
+
+export function startSession(tokens: Tokens, email: string) {
+  setSession({ access: tokens.access_token, refresh: tokens.refresh_token, email });
 }
 
 export async function signOut() {

@@ -1,11 +1,10 @@
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
-import { useQuery } from "@tanstack/react-query";
-import { api, getSession } from "../api";
+import { getSession } from "../api";
 import { usePermissions } from "../App";
+import { ChangePasswordCard, TwoStepCard } from "../components/SecurityCards";
 
 export default function Account() {
   const permissions = [...usePermissions()].sort();
-  const mfa = useQuery({ queryKey: ["mfa"], queryFn: () => api<{ enabled: boolean }>("/auth/mfa") });
   const groups = new Map<string, string[]>();
   for (const p of permissions) {
     const [area = "", action = ""] = p.split(".");
@@ -17,10 +16,9 @@ export default function Account() {
       <Paper sx={{ p: 3, mb: 2 }}>
         <Typography color="text.secondary" variant="body2">Signed in as</Typography>
         <Typography variant="h6">{getSession()?.email}</Typography>
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          Two-step verification: {mfa.data ? (mfa.data.enabled ? "on" : "off") : "…"}
-        </Typography>
       </Paper>
+      <ChangePasswordCard />
+      <TwoStepCard />
       <Paper sx={{ p: 3 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }} gutterBottom>What your roles allow</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

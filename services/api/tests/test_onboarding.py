@@ -354,3 +354,32 @@ def test_email_builder_and_production_guard():
         Settings(
             _env_file=None, ENVIRONMENT="production", SECRET_KEY="x" * 40
         )  # console email not allowed
+
+
+def test_change_password_keeps_this_session_and_signs_out_others(env):
+    login = lambda pw: env.client.post(
+        "/api/v1/auth/login", json={"email": "admin-a@x.test", "password": pw}
+    )
+    here = auth(env, "admin-a@x.test")
+    other = {"Authorization": f"Bearer {login(PASSWORD).json()['access_token']}"}
+    change = lambda cur, new: env.client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": cur, "new_password": new},
+        headers=here,
+    )
+    assert change("wrong-password", GOOD).status_code == 422
+    assert change(PASSWORD, PASSWORD).status_code == 422
+    assert change(PASSWORD, "short").status_code == 422
+    assert change(PASSWORD, "admin-a-password-1").status_code == 422  # contains the email name
+    assert (
+        env.client.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": PASSWORD, "new_password": GOOD},
+        ).status_code
+        == 401
+    )
+    assert change(PASSWORD, GOOD).status_code == 204
+    assert env.client.get("/api/v1/auth/me", headers=here).status_code == 200
+    assert env.client.get("/api/v1/auth/me", headers=other).status_code == 401
+    assert login(PASSWORD).status_code == 401
+    assert login(GOOD).status_code == 200

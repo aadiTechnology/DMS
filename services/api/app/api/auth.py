@@ -92,6 +92,31 @@ def me(principal: Principal = Depends(get_principal)):
     return MeOut(user_id=principal.user_id, tenant_id=principal.tenant_id)
 
 
+class ChangePasswordIn(BaseModel):
+    current_password: str = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)
+    new_password: str = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)
+
+
+@router.post(
+    "/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(limit_auth_requests)],
+)
+def change_password(body: ChangePasswordIn, principal: Principal = Depends(get_principal)):
+    """Signed-in password change. Needs the current password; signs out the other sessions."""
+    try:
+        with auth_session() as db:
+            auth_service.change_password(
+                db,
+                principal.user_id,
+                principal.session_id,
+                body.current_password,
+                body.new_password,
+            )
+    except auth_service.PasswordError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from None
+
+
 # ---- onboarding and recovery (public; every answer is deliberately uniform) ---------------
 
 GENERIC_LINK_ERROR = "This link is invalid or has expired"

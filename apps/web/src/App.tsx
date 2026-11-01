@@ -4,7 +4,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { APPEARANCE_KEY, PreviewBanner, PreviewContext, type Preview } from "./appearance";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { api, getSession, signedOut } from "./api";
 import Layout from "./Layout";
 import Account from "./pages/Account";
@@ -15,6 +15,7 @@ import Categories from "./pages/Categories";
 import DocumentDetail from "./pages/DocumentDetail";
 import Documents from "./pages/Documents";
 import Login from "./pages/Login";
+import { AcceptInvite, Register, ResetPassword, SsoCallback } from "./pages/PublicPages";
 import Activity from "./pages/Activity";
 import Organization from "./pages/Organization";
 import People from "./pages/People";
@@ -97,10 +98,18 @@ export default function App() {
     signedOut.addEventListener("out", out);
     return () => signedOut.removeEventListener("out", out);
   }, []);
-  if (!signedIn) {
+  // These pages work without a session (and for someone signed in as a different person).
+  const publicPage = ["/accept-invite", "/reset-password", "/register", "/sso-callback"].includes(useLocation().pathname);
+  if (!signedIn || publicPage) {
     return (
       <TemplateProvider template={SYSTEM_TEMPLATE}>
-        <Login onSignedIn={() => setSignedIn(true)} />
+        <Routes>
+          <Route path="/accept-invite" element={<AcceptInvite />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/sso-callback" element={<SsoCallback onSignedIn={() => setSignedIn(true)} />} />
+          <Route path="*" element={<Login onSignedIn={() => setSignedIn(true)} />} />
+        </Routes>
       </TemplateProvider>
     );
   }

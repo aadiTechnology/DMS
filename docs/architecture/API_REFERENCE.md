@@ -25,6 +25,7 @@ Status codes: 401 not signed in / session revoked, 403 signed in but lacking the
 | POST `/auth/accept-invite` | none (single-use token) | Set password (new accounts only) and activate the membership; returns tokens. Invalid/expired/used/revoked links all answer 400 |
 | POST `/auth/forgot-password` | none | Always 202 with the same text; emails a link only for an active account (1 per minute per account) |
 | POST `/auth/reset-password` | none (single-use token) | New password; clears lockout; signs the person out everywhere |
+| POST `/auth/change-password` | signed in | `current_password`, `new_password` (same policy as reset). Wrong current password or a rejected new one answers 422. Other sessions are signed out, the current one stays; audited as `auth.password_changed` |
 | POST `/auth/register` | none | Request to join an organization (`tenant_slug`, email, full_name). Always 202 with the same text |
 | POST `/invitations`, GET `/invitations`, POST `/invitations/{membership_id}/resend`, DELETE `/invitations/{membership_id}` | admin.manage_users | Invite by email (optional `role_id`, default employee), list pending, resend (older links stop working), revoke |
 | GET `/registration-requests?status=`, POST `/registration-requests/{id}/approve` or `/reject` | admin.manage_users | Review self-registration; approve sends an invitation |

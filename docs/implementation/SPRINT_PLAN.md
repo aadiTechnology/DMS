@@ -6,10 +6,10 @@ Status on 2026-10-31. Backend: Sprints 0-17 done and tested (346 passed). Web: S
 
 | # | Area | API | Web | Remaining |
 |---|---|---|---|---|
-| 1 | Sign-in, sessions, lockout, rate limit | Done | Partial: sign in, verification code, sign out | Accept invitation page, reset-password page, self-registration page |
-| 2 | Google / Microsoft sign-in | Done (needs OAuth client ids from owner) | None | Sign-in buttons |
-| 3 | Two-step verification | Done | None | Setup, enable, disable, recovery codes screens |
-| 4 | Password change (signed in) | None | None | Small API addition and screen |
+| 1 | Sign-in, sessions, lockout, rate limit | Done | Done (sign in, code, organization chooser, accept invitation, reset password, ask to join) | None |
+| 2 | Google / Microsoft sign-in | Done (needs OAuth client ids from owner) | Done (buttons appear when ids are set; real round trip untested) | Client ids |
+| 3 | Two-step verification | Done | Done (setup with QR, recovery codes, turn off) | None |
+| 4 | Password change (signed in) | Done | Done (Account page) | None |
 | 5 | Users, invitations, registration requests | Done | Done (People: employees, invitations, join requests, two-step reset) | None |
 | 6 | Roles and permissions | Done | Done (People: give and remove roles; your own permissions page) | None |
 | 7 | Organization (departments, branches, projects, designations, employees) | Done | Done (add, edit, switch off, managers, project people, employee details) | None |
