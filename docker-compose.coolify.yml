@@ -1,7 +1,22 @@
-# Coolify (Docker Compose build pack) deployment for the DMS API, with its own Postgres and
-# ClamAV. Set every variable below in the Coolify "Environment Variables" screen; none has a
-# usable default for secrets. See docs/deployment/COOLIFY_DEPLOYMENT.md.
+# Coolify (Docker Compose build pack) deployment of the whole DMS: web app, API and PostgreSQL, with
+# ClamAV as an OPTIONAL extra. Set the variables below in the Coolify "Environment Variables" screen;
+# none has a usable default for secrets. See docs/deployment/COOLIFY_DEPLOYMENT.md.
+#
+# Only the `web` service is public (give it your domain, port 8080). It serves the pages and forwards
+# /api to the `api` service, so the browser sees one address and no cross-site settings are needed.
 services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    expose:
+      - "8080"
+    environment:
+      NGINX_MAX_BODY: ${NGINX_MAX_BODY:-110m}
+
   api:
     build:
       context: ./services/api
@@ -9,21 +24,22 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      clamav:
-        condition: service_started
     expose:
       - "8000"
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-production}
       DATABASE_URL: postgresql+psycopg://dms:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/dms
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY (32+ random characters)}
-      APP_BASE_URL: ${APP_BASE_URL:?set APP_BASE_URL}
-      API_BASE_URL: ${API_BASE_URL:?set API_BASE_URL}
+      APP_BASE_URL: ${APP_BASE_URL:?set APP_BASE_URL (the public address of the web app)}
+      API_BASE_URL: ${API_BASE_URL:?set API_BASE_URL (the same address as APP_BASE_URL)}
       STORAGE_PROVIDER: ${STORAGE_PROVIDER:-backblaze}
       DMS_B2_KEY_ID: ${DMS_B2_KEY_ID:-}
       DMS_B2_APP_KEY: ${DMS_B2_APP_KEY:-}
       DMS_B2_BUCKET_NAME: ${DMS_B2_BUCKET_NAME:-}
-      SCANNER_BACKEND: ${SCANNER_BACKEND:-clamav}
+      # Virus scanning is optional for the first release. To turn it on: SCANNER_BACKEND=clamav,
+      # ALLOW_UNSCANNED_UPLOADS=false, COMPOSE_PROFILES=scan (starts the clamav service below).
+      SCANNER_BACKEND: ${SCANNER_BACKEND:-none}
+      ALLOW_UNSCANNED_UPLOADS: ${ALLOW_UNSCANNED_UPLOADS:-true}
       CLAMD_HOST: clamav
       CLAMD_PORT: "3310"
       EMAIL_BACKEND: ${EMAIL_BACKEND:-smtp}
@@ -39,6 +55,7 @@ services:
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
     volumes:
       - dms_uploads_tmp:/data/uploads-tmp
+      - dms_storage:/data/storage
 
   postgres:
     image: postgres:16
@@ -55,8 +72,10 @@ services:
       timeout: 3s
       retries: 20
 
+  # Optional virus scanner (about 1 GB of memory). Not started unless COMPOSE_PROFILES includes "scan".
   clamav:
     image: clamav/clamav:1.4
+    profiles: ["scan"]
     restart: unless-stopped
     volumes:
       - dms_clamav:/var/lib/clamav
@@ -64,4 +83,5 @@ services:
 volumes:
   dms_pgdata:
   dms_uploads_tmp:
+  dms_storage:
   dms_clamav:

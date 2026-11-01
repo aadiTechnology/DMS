@@ -30,7 +30,7 @@ Status on 2026-11-01. **Scope decision by the owner: no further features except 
 | 22 | Storage usage metering and billing ledger | None | None | Backend and web |
 | 23 | Hindi / Marathi (and English) text | None | None | Backend messages and web |
 | 24 | Mobile app | None | n/a | Whole app |
-| 25 | Deployment | API files for Coolify prepared, not run on a server | Not prepared | Web hosting, real Coolify test |
+| 25 | Deployment | Done locally (whole stack run from the Coolify compose file); not run on a real server | Done locally (web container and proxy) | Real Coolify run by the owner: domain, email, bucket |
 | 26 | Performance at 100,000 documents, security review, accessibility, backup/restore, CI run | Not done | Not done | Hardening sprints |
 | 27 | User guides, deployment and test docs, release checklist | Partial | None | Final documentation |
 

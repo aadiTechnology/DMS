@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0",
+  "key": "modern-enterprise",
+  "name": "Modern Enterprise",
+  "description": "Professional white workspace with a structured blue sidebar layout, clear cards and clean data tables.",
+  "version": "1.0.0",
+  "theme": {
+    "mode": "light",
+    "colors": {
+      "primary": "#1d4ed8",
+      "secondary": "#0ea5e9",
+      "background": "#f3f6fb",
+      "surface": "#ffffff",
+      "textPrimary": "#0f172a",
+      "textSecondary": "#475569",
+      "border": "#e2e8f0",
+      "success": "#15803d",
+      "warning": "#b45309",
+      "error": "#b91c1c",
+      "info": "#0369a1",
+      "chart": ["#1d4ed8", "#0ea5e9", "#14b8a6", "#f59e0b", "#94a3b8"]
+    },
+    "typography": { "fontFamily": "humanist", "scale": 1.0, "headingWeight": 600 },
+    "radius": 6,
+    "shadow": "soft"
+  },
+  "layout": {
+    "sidebarVariant": "full",
+    "sidebarWidth": 248,
+    "headerVariant": "search",
+    "contentWidth": "fluid",
+    "pageSpacing": 24,
+    "navigationPosition": "left"
+  },
+  "density": "comfortable",
+  "components": {
+    "card": "outlined",
+    "button": "solid",
+    "table": "zebra",
+    "input": "outlined",
+    "dropdown": "outlined",
+    "tabs": "underline",
+    "dialog": "standard",
+    "badge": "soft"
+  },
+  "pages": {
+    "dashboard": {
+      "layout": "stats-and-panels",
+      "grid": { "columns": 12 },
+      "widgets": [
+        { "id": "stat-documents", "visible": true, "order": 1, "w": 3, "h": 1 },
+        { "id": "stat-pending", "visible": true, "order": 2, "w": 3, "h": 1 },
+        { "id": "stat-shared", "visible": true, "order": 3, "w": 3, "h": 1 },
+        { "id": "stat-storage", "visible": true, "order": 4, "w": 3, "h": 1 },
+        { "id": "chart-uploads", "visible": true, "order": 5, "w": 8, "h": 2 },
+        { "id": "chart-classification", "visible": true, "order": 6, "w": 4, "h": 2 },
+        { "id": "recent-documents", "visible": true, "order": 7, "w": 7, "h": 2 },
+        { "id": "approvals-queue", "visible": true, "order": 8, "w": 5, "h": 2 },
+        { "id": "welcome", "visible": false, "order": 9, "w": 12, "h": 1 },
+        { "id": "activity", "visible": false, "order": 10, "w": 6, "h": 2 },
+        { "id": "expiring-soon", "visible": false, "order": 11, "w": 6, "h": 2 }
+      ]
+    },
+    "documentExplorer": { "layout": "table" },
+    "documentDetails": { "layout": "two-column" },
+    "reports": { "layout": "grid" }
+  }
+}

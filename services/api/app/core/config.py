@@ -35,7 +35,10 @@ class Settings(BaseSettings):
     EXTRACT_MAX_CHARS: int = Field(default=2_000_000, ge=1000, le=20_000_000)
     EXTRACT_MAX_ATTEMPTS: int = Field(default=3, ge=1, le=10)
     # Malware scanning. `dev` is a stand-in for development only; production needs ClamAV.
-    SCANNER_BACKEND: Literal["dev", "clamav"] = "dev"
+    SCANNER_BACKEND: Literal["dev", "clamav", "none"] = "dev"
+    # Production normally requires ClamAV. "none" (no virus scan at all) is allowed in production only
+    # when this is set on purpose, so skipping the scan is always a visible, deliberate choice.
+    ALLOW_UNSCANNED_UPLOADS: bool = False
     CLAMD_HOST: str = "localhost"
     CLAMD_PORT: int = Field(default=3310, ge=1, le=65535)
     CLAMD_TIMEOUT_SECONDS: int = Field(default=120, ge=5, le=900)
@@ -76,8 +79,18 @@ class Settings(BaseSettings):
             raise ValueError("EMAIL_BACKEND must be 'smtp' in production")
         if self.ENVIRONMENT == "production" and self.STORAGE_PROVIDER != "backblaze":
             raise ValueError("STORAGE_PROVIDER must be 'backblaze' in production")
-        if self.ENVIRONMENT == "production" and self.SCANNER_BACKEND != "clamav":
-            raise ValueError("SCANNER_BACKEND must be 'clamav' in production")
+        if self.ENVIRONMENT == "production" and self.SCANNER_BACKEND == "dev":
+            raise ValueError(
+                "SCANNER_BACKEND must be 'clamav' (or 'none' with ALLOW_UNSCANNED_UPLOADS) in production"
+            )
+        if (
+            self.ENVIRONMENT == "production"
+            and self.SCANNER_BACKEND == "none"
+            and not self.ALLOW_UNSCANNED_UPLOADS
+        ):
+            raise ValueError(
+                "SCANNER_BACKEND=none in production needs ALLOW_UNSCANNED_UPLOADS=true"
+            )
         if self.STORAGE_PROVIDER == "backblaze":
             missing = [
                 name

@@ -94,6 +94,14 @@ Scene text lives in the `scenes` array of the script; edit it and re-run (speech
 
 **Note on earlier scripts:** sign-in now lands on the dashboard, so the sign-in step of the earlier check and recorder scripts was changed to click through to Documents; all eight check scripts were re-run and pass. The earlier recorders were edited the same way but not re-recorded.
 
+## Video 07: deployment readiness (Sprint C1)
+
+`videos/07-dms-deployment.mp4` (about 3 minutes, 7 scenes) with `.srt`, `.vtt` and `.csv`, recorded by `videos/record-deployment.mjs`. It is recorded against the **local copy of the Coolify stack** (`docker-compose.coolify.yml` run with Docker Desktop and published on `http://localhost:8088`), not a real server, and the narration says so. The first organization was created beforehand with `python -m app.provision create-org`, and its one-time link is passed to the recorder; the administrator's password is a throwaway used only in that stack. The invitation scene shows the pending invitation; no email is sent in this setup.
+
+**Regenerate:** build a fresh stack (`docker compose -p dmsstack --env-file <env> -f docker-compose.coolify.yml -f <override that publishes web on 8088> up -d --build`, with `ENVIRONMENT=staging`, `STORAGE_PROVIDER=local`, `EMAIL_BACKEND=console`), create the organization with the command above, then `DMS_WEB_URL=http://localhost:8088 DMS_FIRST_LINK=<link> node videos/record-deployment.mjs`. Remove the stack with `docker compose -p dmsstack ... down -v`.
+
+**Limits:** I looked at 2 of the 7 verification frames. No terminal is shown (the recorder captures the browser only); the command is described in the narration. A real Coolify screen is not shown.
+
 ## Video catalogue
 
 Every sprint's video is listed, with a summary, in `DMS_VIDEO_CATALOGUE.csv` (master) and `DMS_VIDEO_CATALOGUE.xlsx` (built from it by `make_video_catalogue_xlsx.py`).

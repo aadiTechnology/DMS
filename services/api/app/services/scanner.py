@@ -6,6 +6,8 @@ leaves the document unavailable.
 
 - `clamav`: talks to a ClamAV daemon (clamd) over its INSTREAM socket protocol. Free and the
   standard open-source engine; deploy it as a sidecar container. Production requires it.
+- `none`: no virus scan. Every file is accepted as it is, with the detail "not scanned" recorded.
+  Allowed in production only with ALLOW_UNSCANNED_UPLOADS=true (a first release without ClamAV).
 - `dev`: development stand-in. Flags only files containing DEV_VIRUS_MARKER. It is NOT a scanner.
 """
 
@@ -42,6 +44,13 @@ class DevScanner:
         return ScanResult("clean")
 
 
+class NoScanner:
+    """Accepts everything and says so; used only when scanning is switched off on purpose."""
+
+    def scan(self, path: Path) -> ScanResult:
+        return ScanResult("clean", "not scanned")
+
+
 class ClamdScanner:
     """clamd INSTREAM: 'zINSTREAM\\0', then length-prefixed chunks, then a zero length."""
 
@@ -76,4 +85,6 @@ def build_scanner(settings: Settings) -> Scanner:
         return ClamdScanner(
             settings.CLAMD_HOST, settings.CLAMD_PORT, settings.CLAMD_TIMEOUT_SECONDS
         )
+    if settings.SCANNER_BACKEND == "none":
+        return NoScanner()
     return DevScanner()

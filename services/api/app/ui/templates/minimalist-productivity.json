@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0",
+  "key": "minimalist-productivity",
+  "name": "Minimalist Productivity",
+  "description": "Spacious, distraction-free layout with top navigation, almost no borders and a calm document explorer.",
+  "version": "1.0.0",
+  "theme": {
+    "mode": "light",
+    "colors": {
+      "primary": "#1f2937",
+      "secondary": "#2563eb",
+      "background": "#fbfbf9",
+      "surface": "#ffffff",
+      "textPrimary": "#1c1c1c",
+      "textSecondary": "#6b6b6b",
+      "border": "#ececea",
+      "success": "#3f7d4e",
+      "warning": "#a16207",
+      "error": "#b4412e",
+      "info": "#2563eb",
+      "chart": ["#1f2937", "#2563eb", "#9ca3af", "#d6b36a", "#cfd3d8"]
+    },
+    "typography": { "fontFamily": "editorial", "scale": 1.06, "headingWeight": 500 },
+    "radius": 4,
+    "shadow": "none"
+  },
+  "layout": {
+    "sidebarVariant": "top",
+    "sidebarWidth": 0,
+    "headerVariant": "minimal",
+    "contentWidth": "narrow",
+    "pageSpacing": 40,
+    "navigationPosition": "top"
+  },
+  "density": "spacious",
+  "components": {
+    "card": "flat",
+    "button": "outline",
+    "table": "plain",
+    "input": "underline",
+    "dropdown": "underline",
+    "tabs": "underline",
+    "dialog": "flat",
+    "badge": "outlined"
+  },
+  "pages": {
+    "dashboard": {
+      "layout": "focus-list",
+      "grid": { "columns": 12 },
+      "widgets": [
+        { "id": "welcome", "visible": true, "order": 1, "w": 12, "h": 1 },
+        { "id": "stat-pending", "visible": true, "order": 2, "w": 4, "h": 1 },
+        { "id": "stat-documents", "visible": true, "order": 3, "w": 4, "h": 1 },
+        { "id": "stat-shared", "visible": true, "order": 4, "w": 4, "h": 1 },
+        { "id": "recent-documents", "visible": true, "order": 5, "w": 7, "h": 2 },
+        { "id": "approvals-queue", "visible": true, "order": 6, "w": 5, "h": 2 },
+        { "id": "stat-storage", "visible": false, "order": 7, "w": 3, "h": 1 },
+        { "id": "chart-uploads", "visible": false, "order": 8, "w": 8, "h": 2 },
+        { "id": "chart-classification", "visible": false, "order": 9, "w": 4, "h": 2 },
+        { "id": "activity", "visible": false, "order": 10, "w": 6, "h": 2 },
+        { "id": "expiring-soon", "visible": false, "order": 11, "w": 6, "h": 2 }
+      ]
+    },
+    "documentExplorer": { "layout": "list" },
+    "documentDetails": { "layout": "stacked" },
+    "reports": { "layout": "stacked" }
+  }
+}

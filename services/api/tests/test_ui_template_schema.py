@@ -106,3 +106,12 @@ def test_error_messages_point_at_the_problem_and_stay_short():
     result = validate_template(t)
     assert result.errors[0].startswith("theme.colors.primary:")
     assert all(len(e) <= 300 for e in result.errors)
+
+
+def test_the_designs_shipped_in_the_api_image_match_the_showcase_files():
+    shipped = ROOT / "services" / "api" / "app" / "ui" / "templates"
+    originals = {p.name: p.read_bytes() for p in TEMPLATES}
+    copies = {p.name: p.read_bytes() for p in shipped.glob("*.json")}
+    assert (
+        originals == copies
+    )  # run `cp design-showcase/templates/*.json services/api/app/ui/templates/` after editing a design

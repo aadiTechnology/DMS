@@ -1,0 +1,22 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:25.060
+This video shows the D M S as it will run on a server. Three programs start together: the web application, the D M S service behind it, and the database. Visitors only ever see one web address. Everything here runs on a local copy of the same setup that Coolify will use, because no server has been prepared yet. It has not been deployed to a real server.
+
+00:00:25.518 --> 00:00:46.194
+Two addresses report health. The first answers from the web container. The second goes through the web container to the D M S service, and answers with a status of ok. If either stops answering, Coolify can see it and restart the container. The service itself cannot be reached except through the web address.
+
+00:00:46.650 --> 00:01:14.459
+A brand new installation has no users. There is deliberately no public screen to create an organization. Instead, the person running the server uses one command, which creates the organization and its first administrator and prints a single use link. This link was created beforehand. Opening it, the administrator chooses a password, then signs in. The link stops working as soon as it has been used.
+
+00:01:14.914 --> 00:01:27.391
+The five standard designs are published automatically every time the service starts, so nothing needs to be imported by hand. The Appearance page lists them, and each person can choose their own.
+
+00:01:27.843 --> 00:01:57.207
+The administrator creates a first category, then uploads a document. The file goes through the web address to the service, is checked, stored, and appears in the library. In this local copy the files are kept on a disk volume. On a server they go to the Backblaze bucket. Virus scanning is switched off for this first release, and the record of each file says that it was not scanned. It can be turned on later without changing the application.
+
+00:01:57.666 --> 00:02:28.115
+Colleagues join by invitation from the People page. The invitation normally goes out by email. Email needs a sending service, and that is a setting, not part of the application. Until it is set, the person running the server can print a single use link for anyone with the link command and send it by any means. Once the email service is verified, only four values are entered and nothing else changes. Switching provider later is the same four values.
+
+00:02:28.572 --> 00:02:57.521
+To summarize: the web application, service and database start together behind one address, the first administrator is created with one command, documents upload and open, and the standard designs are ready. What remains is on the server side: a Coolify server and domain, a verified email service, a production storage bucket, and then entering those settings. Virus scanning and sign in with Google or Microsoft can be switched on later.
