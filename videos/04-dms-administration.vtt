@@ -1,0 +1,37 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:21.321
+This video shows the administration screens of the D M S web application. An organization administrator can manage people and their roles, review what has happened, define the categories and rules for documents, and maintain the organization structure, all from the browser. It uses a recording copy of the demo organization.
+
+00:00:21.775 --> 00:00:46.825
+Asha is the organization administrator. The People page lists every employee with their roles. Roles decide which actions a person may attempt. Which individual documents they can open is decided separately by classification, department, project and sharing. She gives Neha the Reviewer role, and the change applies at once. She can take it away again the same way.
+
+00:00:47.283 --> 00:01:00.180
+There is a safeguard: an organization must always keep at least one administrator. If Asha tries to remove her own administrator role while she is the only one, the system refuses and explains why.
+
+00:01:00.645 --> 00:01:21.786
+To bring someone in, Asha chooses Invite someone, enters their work email and name, and picks a role. They receive a single use link to set a password. The Invitations tab shows who has not accepted yet. An invitation can be sent again, which makes the earlier link stop working, or withdrawn.
+
+00:01:22.251 --> 00:01:45.637
+Organizations can also let people ask to join. This is off by default. Asha switches it on, and a person fills in the public request form. For this recording that request was submitted on their behalf. The request waits for her decision. Approving it sends an invitation. Nobody gets in without an administrator saying yes.
+
+00:01:46.088 --> 00:02:02.484
+If someone loses the phone they use for two step verification, an administrator can reset it. The system explains what this does and records the reset as a privileged action. The person then signs in with their password and sets two step verification up again.
+
+00:02:02.946 --> 00:02:24.091
+The Activity page is the audit log: who did what and when, including everything we just did, with the people named. It can be filtered by action and date. Privileged actions are marked. The Search index tab shows how document text indexing is going, and lets an administrator process the queue or retry failures.
+
+00:02:24.543 --> 00:02:50.987
+Categories are the kinds of document the organization keeps, and each carries its own rules. Asha creates HR Letters. It is confidential by default and needs review before release, with one review step held by anyone with the Reviewer role. People must link each letter to a department, only P D F and Word files are allowed, it is kept for two years, and the form asks for a letter reference.
+
+00:02:51.447 --> 00:03:09.189
+Rules can change. Asha reopens the category and shortens the retention period. Saving does not rewrite history: it publishes a new version of the rules. Documents already filed keep the rules they were created under, and new documents follow the new version.
+
+00:03:09.651 --> 00:03:27.042
+Tags are free labels on documents. Asha adds a standard tag called Urgent, and can switch tags on or off. The built in tags, such as Pending and Approved, cannot be changed. A switch decides whether employees may create their own tags.
+
+00:03:27.494 --> 00:03:54.168
+The Organization page now has editing for administrators. Asha adds a Legal department, makes Rohan its manager and renames it. Managers see their department documents and can be review steps. On a project she adds Neha and ends her membership the same day. And she moves Neha to the new department in her employee details. Nothing is ever deleted: items are switched off and their history is kept.
+
+00:03:54.632 --> 00:04:21.627
+To summarize: people and roles with a protected last administrator, invitations and join requests, two step reset, a searchable audit log, categories with versioned rules, review steps and fields, tags, and a fully editable organization structure. Still to come in the web application are the account pages for accepting an invitation, resetting a password, and setting up two step verification.

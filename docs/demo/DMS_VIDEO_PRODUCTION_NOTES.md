@@ -65,3 +65,13 @@ Scene text lives in the `scenes` array of the script; edit it and re-run (speech
 **Regenerate:** create a fresh database whose name contains `demo`, run the migrations and `scripts/seed_demo.py` (set `DEMO_ACCESS_FILE` so your real access file is not overwritten), start the API and `npx vite --port <port>` against it, then `DMS_WEB_URL=http://localhost:<port> PGDATABASE=<database> DEMO_ACCESS_FILE=<file> node videos/record-documents.mjs`.
 
 **Limits:** I looked at 3 of the 12 verification frames. Subtitles are one caption per scene. The new-version upload shows no progress bar for large files because the demo files are tiny.
+
+## Video 04: administering the organization (Sprint W2b)
+
+`videos/04-dms-administration.mp4` (about 4.4 minutes, 12 scenes) with `.srt`, `.vtt` and `.csv`, recorded by `videos/record-administration.mjs` on the shared pipeline. It shows: employees and their roles, the last administrator being protected, invitations, a join request being approved, a lost-device two-step reset, the audit log and search index, creating a category with review steps and rules, publishing a new rules version, tags, and editing the organization (department, project people, employee details).
+
+**Recorded on a separate recording database** (created, seeded and deleted again), so the demo you browse was not changed. The join request is simulated: the recorder posts a registration to `/api/v1/auth/register` from inside the page, because there is no public registration screen yet (planned for W2c). The sample people are Rahul Verma and Kavita Rao.
+
+**Regenerate:** create a fresh database whose name contains `demo`, run the migrations and `scripts/seed_demo.py` (set `DEMO_ACCESS_FILE`), start the API and `npx vite --port <port>` against it, then `DMS_WEB_URL=http://localhost:<port> DEMO_ACCESS_FILE=<file> node videos/record-administration.mjs`.
+
+**Limits:** I looked at 3 of the 12 verification frames. Subtitles are one caption per scene. The category dialog's number fields show truncated placeholders at this width ("Review every (da...").
