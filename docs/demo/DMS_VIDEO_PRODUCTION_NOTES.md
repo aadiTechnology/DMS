@@ -75,3 +75,15 @@ Scene text lives in the `scenes` array of the script; edit it and re-run (speech
 **Regenerate:** create a fresh database whose name contains `demo`, run the migrations and `scripts/seed_demo.py` (set `DEMO_ACCESS_FILE`), start the API and `npx vite --port <port>` against it, then `DMS_WEB_URL=http://localhost:<port> DEMO_ACCESS_FILE=<file> node videos/record-administration.mjs`.
 
 **Limits:** I looked at 3 of the 12 verification frames. Subtitles are one caption per scene. The category dialog's number fields show truncated placeholders at this width ("Review every (da...").
+
+## Video 05: account and sign-in (Sprint W2c)
+
+`videos/05-dms-account-and-sign-in.mp4` (about 3.8 minutes, 12 scenes) with `.srt`, `.vtt` and `.csv`, recorded by `videos/record-account.mjs`. Recorded on a separate recording database (deleted afterwards). The API ran with the development email log, and the recorder reads the invitation and reset links from that log; the narration says so. The Google and Microsoft buttons are shown by stubbing the provider list in the browser, and the narration says real provider sign-in is not set up. Sample people: Dev Patel (joins), Sameer (reset), Meera (password change, two-step).
+
+**Regenerate:** fresh `demo` database, migrations, `scripts/seed_demo.py`, API with `APP_BASE_URL` = web address and its log in a file, `npx vite --port <port>`, then `DMS_WEB_URL=http://localhost:<port> DEMO_ACCESS_FILE=<file> API_LOG=<log> node videos/record-account.mjs`.
+
+**Limits:** I looked at 3 of the 12 verification frames. The recovery codes visible in one scene belong to the throwaway database. Subtitles are one caption per scene.
+
+## Video catalogue
+
+Every sprint's video is listed, with a summary, in `DMS_VIDEO_CATALOGUE.csv` (master) and `DMS_VIDEO_CATALOGUE.xlsx` (built from it by `make_video_catalogue_xlsx.py`).

@@ -1,0 +1,37 @@
+WEBVTT
+
+00:00:00.001 --> 00:00:25.785
+This video shows how people get into the D M S web application and look after their own account. It covers asking to join, accepting an invitation, resetting a forgotten password, signing in with Google or Microsoft, changing a password, and two step verification. It uses a recording copy of the demo organization, and the emails that the system would send are read from its development log.
+
+00:00:26.251 --> 00:00:40.158
+By default nobody can ask to join an organization. Asha, the administrator, opens People, then Join requests, and switches on the option that lets people ask. Then she signs out.
+
+00:00:40.622 --> 00:00:58.929
+A new colleague, Dev, chooses Ask to join on the sign-in page. He enters the organization code, his name and his work email. The answer is the same whether or not the organization exists or allows requests, so the form cannot be used to find out who has an account.
+
+00:00:59.379 --> 00:01:07.952
+Asha sees the request waiting under Join requests and approves it. That sends Dev an invitation email with a link that works once.
+
+00:01:08.406 --> 00:01:26.962
+Dev opens the link from his email. He must choose a password. A weak one is refused with the reason, and the two boxes must match before anything is sent. Once he joins, he is taken back to sign-in with a short confirmation, and signs in with the password he chose.
+
+00:01:27.426 --> 00:01:39.688
+Invitation links are single use. If Dev opens the same link again, the page says it is invalid, already used or expired, and tells him to ask the administrator for a new one.
+
+00:01:40.148 --> 00:02:05.308
+Sameer has forgotten his password. On the sign-in page he types his email and chooses Forgot password. The answer is always the same, so it never reveals whether an account exists. The email contains a link, and the new password is chosen on a page like the one for invitations. A reset signs him out everywhere else. His old password stops working at once.
+
+00:02:05.761 --> 00:02:30.310
+Organizations can also let people sign in with Google or Microsoft. The buttons appear only for providers the server has been set up with. This recording uses a test setting so the buttons are visible. Real sign-in needs the organization to register with each provider, which has not been done yet. The account must already exist here: signing in with a provider never creates one.
+
+00:02:30.777 --> 00:02:45.999
+Signed in, Meera opens Account and changes her password. She must enter the current one, and a wrong one is refused. When it works, her other browsers and devices are signed out, while this one stays signed in.
+
+00:02:46.452 --> 00:03:07.843
+Two step verification adds a six digit code from an authenticator app. Meera chooses Set up, scans the picture or types the key, and confirms with a code. The system then shows recovery codes, once, to keep somewhere safe. If she loses her phone, each one works once, and an administrator can also reset it.
+
+00:03:08.306 --> 00:03:24.823
+From now on, signing in asks for the code after the password. A code works only once, so after turning this on she may need to wait for the next one. She can turn two step verification off again, which needs her password and a current code.
+
+00:03:25.275 --> 00:03:45.555
+To summarize: people can ask to join, accept invitations, reset a forgotten password, and manage their own password and two step verification entirely in the browser. Provider sign-in is built and waits for the organization to register with Google and Microsoft. Next in the plan are notifications.
