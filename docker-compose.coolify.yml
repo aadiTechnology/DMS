@@ -28,7 +28,11 @@ services:
       - "8000"
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-production}
-      DATABASE_URL: postgresql+psycopg://dms:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/dms
+      # The password goes in as its own value (never inside a URL), so it may contain @ : / % # ? and so on.
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: dms
+      POSTGRES_DB: dms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY (32+ random characters)}
       APP_BASE_URL: ${APP_BASE_URL:?set APP_BASE_URL (the public address of the web app)}
       API_BASE_URL: ${API_BASE_URL:?set API_BASE_URL (the same address as APP_BASE_URL)}

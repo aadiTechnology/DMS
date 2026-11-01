@@ -90,3 +90,26 @@ def test_the_unscanned_mode_says_so_and_never_blocks(tmp_path):
     f.write_bytes(b"anything")
     result = NoScanner().scan(f)
     assert (result.status, result.detail) == ("clean", "not scanned")
+
+
+@pytest.mark.parametrize(
+    "password",
+    ["plain", "with@at", "a:b/c", "100%25 sure", "hash#and?query=1", "sp ace", "p@ss:w/rd%23#?x=é"],
+)
+def test_the_database_password_may_contain_any_character(password):
+    from sqlalchemy.engine import make_url
+
+    settings = Settings(
+        _env_file=None, POSTGRES_HOST="postgres", POSTGRES_PASSWORD=password, POSTGRES_DB="dms"
+    )
+    url = make_url(settings.DATABASE_URL)
+    assert (url.host, url.port, url.username, url.database) == ("postgres", 5432, "dms", "dms")
+    assert url.password == password  # read back exactly, so the server sees what was typed
+
+
+def test_without_a_host_the_url_setting_is_used_unchanged():
+    url = "postgresql+psycopg://u:p@db.example:5432/x"
+    assert Settings(_env_file=None, DATABASE_URL=url).DATABASE_URL == url
+    assert (
+        Settings(_env_file=None, DATABASE_URL=url, POSTGRES_PASSWORD="ignored").DATABASE_URL == url
+    )

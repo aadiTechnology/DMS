@@ -93,6 +93,7 @@ Register the application with each provider (their redirect address is `<your do
 
 ## Notes
 
+- **Passwords with special characters:** `POSTGRES_PASSWORD` is passed to the API as its own value (the API builds the database address from separate parts and escapes it), so it may contain any character, including `@ : / % # ?` and spaces. Do not put the password inside a `DATABASE_URL` yourself; if you ever set `DATABASE_URL` by hand, special characters in it must be percent-encoded.
 - **Single worker:** `WEB_CONCURRENCY=1` because request rate limits are held in memory. Do not run several API containers yet.
 - **Upload size:** 100 MB by default (`DMS_MAX_UPLOAD_BYTES`). `NGINX_MAX_BODY` (default 110 MB) must stay a little above it.
 - **Database access:** the API connects as the database owner and switches to restricted roles per request (that enforces tenant isolation). Use the bundled PostgreSQL or an external server where that user may create roles.
@@ -102,6 +103,6 @@ Register the application with each provider (their redirect address is `<your do
 
 ## Verified here / not verified
 
-**Verified locally (same compose file, Docker Desktop):** both images build; the stack starts with the database healthy first; the web address serves the application, deep links, security headers and the API through one address; the API is not reachable except through the web address; the first-administrator command creates an organization and a one-time link that works once; sign-in, a reload, creating a category, uploading a document through the proxy and opening it (`videos/check-deployment.mjs`, all checks passed); the API restarted and came back healthy with the designs published once (a second start skipped them); production refuses to start without a scanner decision (also unit tests); the `scan` profile adds the ClamAV container (configuration only).
+**Verified locally (same compose file, Docker Desktop):** both images build; the stack also starts and migrates with a database password containing `@ : / % # ?` and a space; the stack starts with the database healthy first; the web address serves the application, deep links, security headers and the API through one address; the API is not reachable except through the web address; the first-administrator command creates an organization and a one-time link that works once; sign-in, a reload, creating a category, uploading a document through the proxy and opening it (`videos/check-deployment.mjs`, all checks passed); the API restarted and came back healthy with the designs published once (a second start skipped them); production refuses to start without a scanner decision (also unit tests); the `scan` profile adds the ClamAV container (configuration only).
 
 **Not verified:** a real Coolify server (HTTPS, domain, Coolify's handling of compose profiles and magic variables, terminal and scheduled tasks), the ClamAV container actually running (image not pulled), real email delivery, the Backblaze production bucket, a restore from backup, and behaviour under load. A content security policy is not set yet (planned for hardening).

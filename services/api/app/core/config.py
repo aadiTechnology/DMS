@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 DEV_SECRET = "dev-only-insecure-secret-do-not-use-in-production"
 # Buckets of the existing ERP: the DMS must never share them (ADR-0001).
@@ -14,6 +15,13 @@ class Settings(BaseSettings):
 
     ENVIRONMENT: str = "development"
     DATABASE_URL: str = "postgresql+psycopg://dms:dms_dev@localhost:15432/dms"
+    # Alternative to DATABASE_URL: when POSTGRES_HOST is set, the URL is built from these parts, so a
+    # password may contain any character (@ : / % # ?) without having to be escaped by hand.
+    POSTGRES_HOST: str = ""
+    POSTGRES_PORT: int = 5432
+    POSTGRES_USER: str = "dms"
+    POSTGRES_PASSWORD: SecretStr = SecretStr("")
+    POSTGRES_DB: str = "dms"
     SECRET_KEY: str = DEV_SECRET
     # PRD STO-001: 100 MB default, tenant-configurable within plan limits.
     DMS_MAX_UPLOAD_BYTES: int = Field(default=100 * 1024 * 1024, gt=0)
@@ -68,6 +76,19 @@ class Settings(BaseSettings):
     DMS_B2_KEY_ID: str = ""
     DMS_B2_APP_KEY: SecretStr = SecretStr("")
     DMS_B2_BUCKET_NAME: str = ""
+
+    @model_validator(mode="after")
+    def _database_url_from_parts(self):
+        if self.POSTGRES_HOST:
+            self.DATABASE_URL = URL.create(
+                "postgresql+psycopg",
+                username=self.POSTGRES_USER,
+                password=self.POSTGRES_PASSWORD.get_secret_value() or None,
+                host=self.POSTGRES_HOST,
+                port=self.POSTGRES_PORT,
+                database=self.POSTGRES_DB,
+            ).render_as_string(hide_password=False)
+        return self
 
     @model_validator(mode="after")
     def _production_needs_real_secret(self):
