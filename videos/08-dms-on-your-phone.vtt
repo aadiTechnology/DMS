@@ -1,0 +1,28 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:28.215
+This video shows the D M S on a phone. It is the same application and the same address as on a computer. On a small screen it rearranges itself for one thumb: a bottom bar for the places used most, and pages that fit the width. This is the first phase. It covers signing in, the dashboard, finding documents, uploading, and approvals. It uses a recording copy of the demo organization.
+
+00:00:28.668 --> 00:00:47.804
+Asha signs in and lands on the dashboard. The four figures sit two to a row, and the charts and lists follow in a single column. The bottom bar always shows Dashboard, Documents, Upload and Approvals, with a red badge when reviews are waiting for her. Everything else is under More.
+
+00:00:48.265 --> 00:01:07.742
+In Documents, each document is a compact card with its category, date, classification and status. Search sits at the top. The filters are folded away to save space, and open with one tap. Asha filters to internal documents, and only the internal ones remain.
+
+00:01:08.192 --> 00:01:23.034
+Opening a document shows its details, then its versions, one card each, with Preview, Download and Restore as buttons. Preview shows a P D F or an image right on the screen, without leaving the application.
+
+00:01:23.498 --> 00:01:51.253
+Upload has a Take a photo button. On a real phone it opens the camera, so a paper receipt can be photographed and filed on the spot. In this recording a saved photo of a delivery receipt stands in for the camera. She chooses a category, adds a title, picks a department, fills in the fields that category asks for, and uploads. The file is checked and stored, and she can open the new document straight away.
+
+00:01:51.716 --> 00:02:09.193
+Reviews waiting for her appear as cards. She taps Review, and the review opens full screen. She can read the history, add a comment, and choose Approve or Reject. Approving from the phone takes seconds, and the red badge on the bottom bar clears.
+
+00:02:09.657 --> 00:02:27.349
+Everything else is under More: shared documents, organization, people and the rest, each according to what the person is allowed to use. Sign out is here too. Those pages fit the screen, but they are designed for a computer, and will be refined in a later phase.
+
+00:02:27.811 --> 00:02:56.261
+There is nothing to download from an app store. On an Android phone, open the address in Chrome, open the menu and choose Install app. On an iPhone, open it in Safari, tap Share, then Add to Home Screen. A D M S icon, shown here, appears with your other apps, and the application opens full screen without the browser bar. Updates arrive by themselves when the application is updated on the server.
+
+00:02:56.726 --> 00:03:14.943
+To summarize: the D M S now works on a phone from the same address. The dashboard, search, documents, camera upload and approvals have a phone layout, and everything else remains available. Offline use and push notifications are not part of this version.

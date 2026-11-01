@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { api, errorText } from "../api";
 import { classTone, dateTime, label } from "../format";
+import { useIsPhone } from "../useIsPhone";
 
 interface Item {
   id: string;
@@ -27,6 +28,7 @@ interface Detail extends Item {
 export default function Approvals() {
   const client = useQueryClient();
   const queue = useQuery({ queryKey: ["approvals", "queue"], queryFn: () => api<Item[]>("/approvals/queue") });
+  const phone = useIsPhone();
   const [open, setOpen] = useState<string | null>(null);
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
@@ -61,6 +63,23 @@ export default function Approvals() {
     <Box>
       <Typography variant="h5" sx={{ mb: 2 }}>Approvals waiting for you</Typography>
       {queue.error && <Alert severity="error">{errorText(queue.error)}</Alert>}
+      {phone ? (
+        <Stack spacing={1.5}>
+          {queue.data?.map((r) => (
+            <Paper key={r.id} sx={{ p: 2 }}>
+              <Typography fontWeight={600} sx={{ overflowWrap: "anywhere" }}>{r.title}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                v{r.version_number} · step {r.current_step} of {r.total_steps} · {dateTime(r.submitted_at)}
+              </Typography>
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Chip size="small" variant="outlined" color={classTone(r.classification)} label={label(r.classification)} />
+                <Button variant="contained" onClick={() => setOpen(r.id)}>Review</Button>
+              </Stack>
+            </Paper>
+          ))}
+          {queue.data?.length === 0 && <Typography color="text.secondary" sx={{ py: 4, textAlign: "center" }}>Nothing is waiting for your decision.</Typography>}
+        </Stack>
+      ) : (
       <Paper>
         <Table size="small">
           <TableHead>
@@ -83,7 +102,8 @@ export default function Approvals() {
           </TableBody>
         </Table>
       </Paper>
-      <Dialog open={!!open} onClose={close} fullWidth maxWidth="sm">
+      )}
+      <Dialog open={!!open} onClose={close} fullWidth maxWidth="sm" fullScreen={phone}>
         <DialogTitle>{detail.data?.title ?? "Review"}</DialogTitle>
         <DialogContent>
           {detail.data && (
@@ -102,7 +122,7 @@ export default function Approvals() {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ flexWrap: "wrap", gap: 0.5 }}>
           <Button onClick={close}>Close</Button>
           <Button disabled={!comment.trim() || note.isPending} onClick={() => note.mutate()}>Add comment only</Button>
           <Button color="error" disabled={!comment.trim() || !detail.data?.can_decide} onClick={() => decide.mutate("reject")}>Reject</Button>

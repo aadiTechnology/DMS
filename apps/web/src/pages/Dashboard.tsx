@@ -174,7 +174,8 @@ export default function Dashboard() {
   // "focus-list" shows the same widgets as one calm column; the other presets use the grid of the design.
   const focus = plan.layout === "focus-list";
   const columns = focus ? 1 : plan.columns;
-  const place = (w: ResolvedWidget) => (focus ? {} : { gridColumn: `span ${Math.min(w.span, columns)}` });
+  // On a phone the grid has two columns: the four figures sit two to a row, every card takes the full width.
+  const place = (w: ResolvedWidget) => ({ gridColumn: { xs: w.id.startsWith("stat-") ? "span 1" : "span 2", md: focus ? "auto" : `span ${Math.min(w.span, columns)}` } });
   return (
     <Box sx={{ maxWidth: focus ? 880 : undefined }}>
       <Stack direction="row" alignItems="baseline" justifyContent="space-between" sx={{ mb: 2 }}>
@@ -182,9 +183,9 @@ export default function Dashboard() {
         {data.data && <Typography variant="caption" color="text.secondary">Updated {dateTime(data.data.generated_at)}</Typography>}
       </Stack>
       {data.isError && <Alert severity="error">The dashboard could not be loaded.</Alert>}
-      <Box sx={{ display: "grid", gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: 2, alignItems: "stretch" }} data-dashboard-layout={plan.layout}>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: `repeat(${columns}, minmax(0, 1fr))` }, gap: 2, alignItems: "stretch" }} data-dashboard-layout={plan.layout}>
         {plan.widgets.map((w) => (
-          <Box key={w.id} sx={{ ...place(w), minHeight: focus || w.rows < 2 || w.id === "welcome" ? undefined : 150 * w.rows - 40, ...(plan.layout === "dark-hero" && w.id === "welcome" ? { "& .MuiPaper-root": { bgcolor: "primary.main", color: "primary.contrastText", "& .MuiTypography-colorTextSecondary, & .MuiTypography-root": { color: "inherit" } } } : {}) }}>
+          <Box key={w.id} sx={{ ...place(w), minHeight: { md: focus || w.rows < 2 || w.id === "welcome" ? undefined : 150 * w.rows - 40 }, ...(plan.layout === "dark-hero" && w.id === "welcome" ? { "& .MuiPaper-root": { bgcolor: "primary.main", color: "primary.contrastText", "& .MuiTypography-colorTextSecondary, & .MuiTypography-root": { color: "inherit" } } } : {}) }}>
             {data.data ? widgetBody(w.id, data.data) : <Skeleton variant="rounded" height={w.rows > 1 ? 160 : 90} />}
           </Box>
         ))}

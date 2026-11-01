@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { api, errorText } from "../api";
 import { CLASSIFICATIONS, classTone, date, label, size, stateTone } from "../format";
+import { useIsPhone } from "../useIsPhone";
 import { categoryName, useCategories } from "../queries";
 
 interface Item {
@@ -32,7 +33,11 @@ const STATUSES = ["approved", "submitted", "under_review", "rejected", "archived
 
 export default function Documents() {
   const categories = useCategories();
-  const layout = useTemplate().pages.documentExplorer.layout;
+  const phone = useIsPhone();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // A phone always gets the compact list, whatever table or grid the design prefers.
+  const designLayout = useTemplate().pages.documentExplorer.layout;
+  const layout = phone ? "list" : designLayout;
   const [params] = useSearchParams();
   const [text, setText] = useState(params.get("q") ?? "");
   const [q, setQ] = useState(params.get("q") ?? "");
@@ -122,14 +127,14 @@ export default function Documents() {
   const asList = (
     <Box>
       {items.map((d) => (
-        <Stack key={d.id} direction="row" alignItems="center" spacing={2} sx={{ py: 2.5, borderBottom: 1, borderColor: "divider" }}>
+        <Stack key={d.id} direction={{ xs: "column", md: "row" }} alignItems={{ xs: "stretch", md: "center" }} spacing={{ xs: 1, md: 2 }} sx={{ py: { xs: 1.5, md: 2.5 }, borderBottom: 1, borderColor: "divider" }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="h6" component="div">{titleLink(d)}</Typography>
+            <Typography variant="h6" component="div" sx={{ fontSize: { xs: "1rem", md: undefined }, overflowWrap: "anywhere" }}>{titleLink(d)}</Typography>
             <Typography variant="body2" color="text.secondary">
               {categoryName(categories.data, d.category_id)} · {date(d.updated_at)} · {d.current_version_number ? `v${d.current_version_number}` : "no version"} · {size(d.size_bytes)}
             </Typography>
           </Box>
-          {chips(d)}
+          <Stack direction="row" spacing={0.5}>{chips(d)}</Stack>
         </Stack>
       ))}
       {result.data && items.length === 0 && <Typography color="text.secondary" sx={{ py: 4 }}>No documents match.</Typography>}
@@ -164,7 +169,7 @@ export default function Documents() {
         <ToggleButton value="all">All documents</ToggleButton>
         <ToggleButton value="mine" disabled={!me.data}>Uploaded by me</ToggleButton>
       </ToggleButtonGroup>
-      <Paper sx={{ p: 2, mb: 2 }}>
+      <Paper sx={{ p: { xs: 1.5, md: 2 }, mb: 2 }}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={2}
@@ -184,24 +189,25 @@ export default function Documents() {
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> } }}
             inputProps={{ "aria-label": "Search documents in this page" }}
           />
-          <TextField select size="small" label="Category" value={category} onChange={(e) => reset(setCategory)(e.target.value)} sx={{ minWidth: 200 }}>
+          {phone && <Button onClick={() => setFiltersOpen((v) => !v)} aria-expanded={filtersOpen}>{filtersOpen ? "Hide filters" : "Filters"}</Button>}
+          {(!phone || filtersOpen) && <><TextField select size="small" label="Category" value={category} onChange={(e) => reset(setCategory)(e.target.value)} sx={{ minWidth: { md: 200 } }}>
             <MenuItem value="">All categories</MenuItem>
             {categories.data?.map((c) => (
               <MenuItem key={c.id} value={c.id}>{c.path}</MenuItem>
             ))}
           </TextField>
-          <TextField select size="small" label="Classification" value={classification} onChange={(e) => reset(setClassification)(e.target.value)} sx={{ minWidth: 180 }}>
+          <TextField select size="small" label="Classification" value={classification} onChange={(e) => reset(setClassification)(e.target.value)} sx={{ minWidth: { md: 180 } }}>
             <MenuItem value="">All</MenuItem>
             {CLASSIFICATIONS.map(([v, l]) => (
               <MenuItem key={v} value={v}>{`${l}${facet("classification", v) ? ` (${facet("classification", v)})` : ""}`}</MenuItem>
             ))}
           </TextField>
-          <TextField select size="small" label="Status" value={status} onChange={(e) => reset(setStatus)(e.target.value)} sx={{ minWidth: 150 }}>
+          <TextField select size="small" label="Status" value={status} onChange={(e) => reset(setStatus)(e.target.value)} sx={{ minWidth: { md: 150 } }}>
             <MenuItem value="">All</MenuItem>
             {STATUSES.map((s) => (
               <MenuItem key={s} value={s}>{label(s)}</MenuItem>
             ))}
-          </TextField>
+          </TextField></>}
           <Button type="submit" variant="contained">Search</Button>
         </Stack>
       </Paper>

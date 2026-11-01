@@ -93,6 +93,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       title={TITLES.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? "Documents"}
       navItems={items.filter((i) => i.show)}
       linkComponent={NavLink}
+      mobilePrimary={["/dashboard", "/documents", "/upload", "/approvals"]}
       userLabel={getSession()?.email ?? ""}
       onSignOut={async () => {
         await signOut();

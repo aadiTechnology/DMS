@@ -79,6 +79,16 @@ Production refuses to start if it would be unsafe: a weak `SECRET_KEY`, local st
    - every 15 minutes: `python -m app.jobs expire-uploads`
 9. **Backups:** schedule backups of the `postgres` service (volume `dms_pgdata`). Documents live in Backblaze; keep bucket versioning on. Test a restore before real use.
 
+## Checking that the settings really work
+
+Run this in Coolify (the `api` service -> **Terminal**), or locally with `docker compose ... run --rm api python -m app.selfcheck`:
+
+```bash
+python -m app.selfcheck
+```
+
+It tests each setting for real and prints OK, WARN or FAIL: the settings themselves (secret length, the public address), the database, the upload folder (writable, free space), the **document store** (it stores, reads back and deletes a tiny test file, which proves the Backblaze key, bucket name and delete permission), the virus scanner if on, and the **email login** (it logs in to the mail server and sends nothing). Secrets are never printed, only whether they are set. If uploads fail, the upload-folder and document-store lines show why.
+
 ## Email (Brevo, Zoho ZeptoMail or any provider)
 
 Set these four values and `EMAIL_BACKEND=smtp`, then redeploy: `EMAIL_SMTP_HOST`, `EMAIL_SMTP_PORT` (usually 587), `EMAIL_SMTP_USER`, `EMAIL_SMTP_PASSWORD`, and `EMAIL_FROM` (an address on your verified domain). **Switching provider later is only changing these values.** Brevo and similar providers send only after your sending domain's DNS records are verified, which can take up to 48 hours; until then use the `link` command above.
@@ -90,6 +100,10 @@ Set `SCANNER_BACKEND=clamav`, `ALLOW_UNSCANNED_UPLOADS=false` and `COMPOSE_PROFI
 ## Google and Microsoft sign-in (later)
 
 Register the application with each provider (their redirect address is `<your domain>/sso-callback`), then set `SSO_GOOGLE_CLIENT_ID` and/or `SSO_MICROSOFT_CLIENT_ID`. The buttons appear by themselves. People must already have an account (invited); a provider never creates one.
+
+## Phones
+
+The web app works on a phone from the same address and can be added to the home screen (`docs/guides/USING_DMS_ON_A_PHONE.md`). It needs `https://` to offer the install option. Nothing else needs configuring.
 
 ## Notes
 

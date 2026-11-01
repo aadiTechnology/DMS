@@ -10,6 +10,7 @@ import {
   Alert, Box, Button, Chip, Divider, Paper, Stack, Tab, TextField, Table, TableBody, TableCell, TableHead, TableRow, Tabs, Typography,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
+import { useIsPhone } from "../useIsPhone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTemplate } from "@aaditech/ui-engine";
 import { Fragment, useState } from "react";
@@ -87,6 +88,7 @@ export default function DocumentDetail() {
   const [previewing, setPreviewing] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [tab, setTab] = useState(0);
+  const phone = useIsPhone();
   const layout = useTemplate().pages.documentDetails.layout;
 
   const doc = useQuery({ queryKey: ["doc", id], queryFn: () => api<Doc>(`/documents/${id}`) });
@@ -167,6 +169,29 @@ export default function DocumentDetail() {
   const versionsCard = (
   <Paper sx={{ p: 2 }}>
     <Typography variant="subtitle1" sx={{ fontWeight: 600 }} gutterBottom>Versions</Typography>
+    {phone ? (
+      <Stack spacing={1.5} divider={<Divider flexItem />}>
+        {d.versions.map((v) => (
+          <Box key={v.version_number}>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+              <Typography fontWeight={700}>v{v.version_number}</Typography>
+              {v.version_number === d.current_version_number && <Chip size="small" label="Current" color="primary" />}
+              <Typography variant="body2" color="text.secondary">{size(v.size_bytes)} · {date(v.created_at)}</Typography>
+            </Stack>
+            <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>{v.original_filename}</Typography>
+            {v.comment && <Typography variant="caption" display="block" color="text.secondary">{v.comment}</Typography>}
+            <Typography variant="caption" color="text.secondary">Review: {v.review_status === "none" ? "not required" : label(v.review_status)}</Typography>
+            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+              <Button size="small" startIcon={<VisibilityIcon />} disabled={!d.access.preview} onClick={() => setPreviewing(v.version_number)}>Preview</Button>
+              <Button size="small" startIcon={<DownloadIcon />} disabled={!d.access.download} onClick={() => open(v.version_number, "download")}>Download</Button>
+              {canAddVersion && d.lifecycle_state !== "archived" && v.version_number !== Math.max(...d.versions.map((x) => x.version_number)) && v.status === "available" && (
+                <Button size="small" startIcon={<RestoreIcon />} disabled={restore.isPending} onClick={() => restore.mutate(v.version_number)}>Restore</Button>
+              )}
+            </Stack>
+          </Box>
+        ))}
+      </Stack>
+    ) : (
     <Table size="small">
       <TableHead>
         <TableRow><TableCell>Version</TableCell><TableCell>File</TableCell><TableCell>Size</TableCell><TableCell>Review</TableCell><TableCell>Added</TableCell><TableCell align="right">Open</TableCell></TableRow>
@@ -195,6 +220,7 @@ export default function DocumentDetail() {
         ))}
       </TableBody>
     </Table>
+    )}
   </Paper>
   );
   const approvalCard = (

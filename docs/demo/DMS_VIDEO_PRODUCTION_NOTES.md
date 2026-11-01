@@ -102,6 +102,14 @@ Scene text lives in the `scenes` array of the script; edit it and re-run (speech
 
 **Limits:** I looked at 2 of the 7 verification frames. No terminal is shown (the recorder captures the browser only); the command is described in the narration. A real Coolify screen is not shown.
 
+## Video 08: the DMS on a phone (Sprint M1, phase 1)
+
+`videos/08-dms-on-your-phone.mp4` (about 3.3 minutes, 9 scenes, **portrait 780 x 1688**) with `.srt`, `.vtt` and `.csv`, recorded by `videos/record-mobile.mjs`. The recorder runs a 390 x 844 touch phone in the browser and the video is enlarged to twice that size when it is made (`lib.mjs`, option `mobile`). It is a simulated phone in a desktop browser, not a real device. The "Take a photo" button opens the camera on a real phone; in the recording the photo input is given a saved picture of a delivery receipt (`videos/assets/delivery-receipt-photo.jpg`), and the narration says so. The install steps are described, not shown (a browser recording cannot capture the phone's install screen); the application icon is shown instead. Data was changed on a separate recording database (deleted afterwards): one upload and one approval.
+
+**Regenerate:** fresh `demo` database, migrations, `scripts/seed_demo.py`, API and `npx vite --port <port>` against it, then `DMS_WEB_URL=http://localhost:<port> DEMO_ACCESS_FILE=<file> node videos/record-mobile.mjs`.
+
+**Limits:** I looked at 2 of the 9 verification frames (upload result, application icon) plus phone screenshots while building. First attempt had the picture in one corner of a grey canvas and was redone. Pages outside phase 1 are not shown beyond the More list and Shared.
+
 ## Video catalogue
 
 Every sprint's video is listed, with a summary, in `DMS_VIDEO_CATALOGUE.csv` (master) and `DMS_VIDEO_CATALOGUE.xlsx` (built from it by `make_video_catalogue_xlsx.py`).

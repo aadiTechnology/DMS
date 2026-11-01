@@ -1,7 +1,7 @@
 """Dashboard figures. Every number is computed over exactly the documents the person may see
 (the same access clause as the library), so a dashboard can never reveal a hidden document."""
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
@@ -71,7 +71,7 @@ def build(db: Session, tenant_id, user_id, viewer: Viewer, *, can_see_activity: 
     ).all()
 
     queue = approvals.queue(db, tenant_id, user_id, 200, 0)
-    horizon = date.today() + timedelta(days=DUE_DAYS)
+    horizon = datetime.now(UTC).date() + timedelta(days=DUE_DAYS)
     due = (
         Document.id.in_(ids),
         Document.lifecycle_state.in_(("approved", "archived")),

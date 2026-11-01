@@ -1,3 +1,4 @@
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import {
   Alert, Box, Button, LinearProgress, MenuItem, Paper, Stack, TextField, Typography,
 } from "@mui/material";
@@ -99,7 +100,7 @@ export default function Upload() {
   return (
     <Box sx={{ maxWidth: 720 }}>
       <Typography variant="h5" sx={{ mb: 2 }}>Upload a document</Typography>
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: { xs: 2, md: 3 } }}>
         <form onSubmit={submit}>
           <Stack spacing={2}>
             {error && <Alert severity="error">{error}</Alert>}
@@ -116,6 +117,11 @@ export default function Upload() {
             <Button variant="outlined" component="label">
               {file ? `${file.name} (${(file.size / 1024).toFixed(0)} KB)` : "Choose a file"}
               <input hidden type="file" aria-label="File" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            </Button>
+            {/* On a phone this opens the camera; elsewhere it opens the usual file picker for images. */}
+            <Button variant="outlined" startIcon={<PhotoCameraIcon />} component="label" sx={{ display: { md: "none" } }}>
+              Take a photo
+              <input hidden type="file" accept="image/*" capture="environment" aria-label="Photo" onChange={(e) => { const f = e.target.files?.[0]; if (f) setFile(f); }} />
             </Button>
             {policy?.allowed_extensions?.length ? <Typography variant="caption" color="text.secondary">Allowed types: {policy.allowed_extensions.join(", ")}</Typography> : null}
             <TextField label="Title (defaults to the file name)" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -144,7 +150,7 @@ export default function Upload() {
               />
             ))}
             {busy && <LinearProgress />}
-            <Button type="submit" variant="contained" size="large" disabled={busy || !file || !categoryId}>Upload</Button>
+            <Button type="submit" variant="contained" size="large" disabled={busy || !file || !categoryId} sx={{ minHeight: 48 }}>Upload</Button>
           </Stack>
         </form>
       </Paper>

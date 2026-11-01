@@ -1,5 +1,5 @@
 # ruff: noqa: F811
-from datetime import date, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -54,8 +54,8 @@ def test_clock_starts_at_release_from_the_category_version(cast):
     cat = category_with(w, retention_days=30, review_interval_days=10)
     doc = make_doc(w, "internal", category=cat)
     d = life(w, w.emp, doc)
-    assert d["retention_until"] == (date.today() + timedelta(days=30)).isoformat()
-    assert d["review_due_on"] == (date.today() + timedelta(days=10)).isoformat()
+    assert d["retention_until"] == (datetime.now(UTC).date() + timedelta(days=30)).isoformat()
+    assert d["review_due_on"] == (datetime.now(UTC).date() + timedelta(days=10)).isoformat()
     assert d["deletion_blockers"][0]["code"] == "retention"
     plain = make_doc(w, "internal")
     assert life(w, w.emp, plain)["retention_until"] is None
@@ -68,7 +68,10 @@ def test_clock_starts_only_when_an_approval_category_document_is_approved(cast):
     assert life(w, w.emp, doc)["retention_until"] is None  # still waiting for review
     rid = w.client.get(f"/api/v1/documents/{doc}/approvals", headers=w.emp).json()[0]["id"]
     assert post(w, p.rev.h, f"approvals/{rid}/approve").status_code == 200
-    assert life(w, w.emp, doc)["retention_until"] == (date.today() + timedelta(days=5)).isoformat()
+    assert (
+        life(w, w.emp, doc)["retention_until"]
+        == (datetime.now(UTC).date() + timedelta(days=5)).isoformat()
+    )
 
 
 # ---- archive ----------------------------------------------------------------------------

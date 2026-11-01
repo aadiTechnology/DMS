@@ -137,7 +137,7 @@ function writeCsv(name, scenes) {
   fs.writeFileSync(path.join(here, `${name}.csv`), rows.join('\n') + '\n', 'utf8')
 }
 
-async function mux(webm, cues, destination) {
+async function mux(webm, cues, destination, mobile = false) {
   const videoSeconds = await probeDuration(webm)
   const last = cues[cues.length - 1]
   const audioEnd = last.start + last.seconds + 0.4
@@ -151,7 +151,8 @@ async function mux(webm, cues, destination) {
     filter.push(`[${index + 1}:a]adelay=${delay}|${delay},apad=pad_dur=0.2,aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo[a${index}]`)
   })
   filter.push(`${cues.map((_, index) => `[a${index}]`).join('')}amix=inputs=${cues.length}:duration=longest:dropout_transition=0:normalize=0,atrim=0:${total.toFixed(3)},asetpts=PTS-STARTPTS[aout]`)
-  filter.push(`[0:v]${extra > 0.05 ? `tpad=stop_mode=clone:stop_duration=${extra.toFixed(3)}` : 'null'},format=yuv420p[vout]`)
+  // a phone is recorded at 390 x 844 and enlarged to twice that size so it is readable when played back
+  filter.push(`[0:v]${extra > 0.05 ? `tpad=stop_mode=clone:stop_duration=${extra.toFixed(3)}` : 'null'}${mobile ? ',scale=780:1688:flags=lanczos' : ''},format=yuv420p[vout]`)
   await run('ffmpeg', [...inputs, '-filter_complex', filter.join(';'), '-map', '[vout]', '-map', '[aout]', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', destination])
   return probeDuration(destination)
 }
@@ -181,7 +182,7 @@ async function launchBrowser() {
  * videos/<name>.mp4 with narration, .srt, .vtt, a narration .csv and one verification frame per scene.
  * `check(page)` runs after every scene (used to make sure no secret is on screen).
  */
-export async function recordVideo({ name, scenes, password, check }) {
+export async function recordVideo({ name, scenes, password, check, mobile = false }) {
   ensureSpeechScript()
   const prepared = []
   for (const scene of scenes) {
@@ -190,11 +191,13 @@ export async function recordVideo({ name, scenes, password, check }) {
   }
   const browser = await launchBrowser()
   const context = await browser.newContext({
-    viewport: { width: 1600, height: 900 },
+    // mobile = a 390 x 844 touch phone, enlarged to twice the size when the video is made so the picture stays readable.
+    viewport: mobile ? { width: 390, height: 844 } : { width: 1600, height: 900 },
+    ...(mobile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}),
     locale: 'en-US',
     timezoneId: 'Asia/Kolkata',
     colorScheme: 'light',
-    recordVideo: { dir: workDir, size: { width: 1600, height: 900 } },
+    recordVideo: { dir: workDir, size: mobile ? { width: 390, height: 844 } : { width: 1600, height: 900 } },
   })
   const page = await context.newPage()
   page.setDefaultTimeout(30000)
@@ -224,7 +227,7 @@ export async function recordVideo({ name, scenes, password, check }) {
   }
   const webm = await video.path()
   const destination = path.join(here, `${name}.mp4`)
-  const duration = await mux(webm, cues, destination)
+  const duration = await mux(webm, cues, destination, mobile)
   fs.rmSync(webm, { force: true })
   writeSubtitles(name, cues)
   writeCsv(name, scenes)
