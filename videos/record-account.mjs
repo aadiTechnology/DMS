@@ -34,7 +34,8 @@ async function signIn(page, email, pw, code) {
     await page.getByLabel('Verification code').fill(code())
     await click(page.getByRole('button', { name: 'Sign in' }))
   }
-  await page.getByRole('heading', { name: 'Documents', exact: true }).waitFor()
+  await page.getByRole('heading', { name: /^(Dashboard|Documents)$/ }).waitFor()
+  if (await page.getByRole('heading', { name: 'Dashboard', exact: true }).count()) { await page.getByRole('link', { name: 'Documents' }).first().click(); await page.getByRole('heading', { name: 'Documents', exact: true }).waitFor() }
 }
 const signOut = async (page) => {
   await click(page.getByRole('button', { name: 'Sign out' }))

@@ -13,7 +13,7 @@ const require = createRequire(
 )
 const { chromium } = require('playwright')
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const access = fs.readFileSync(path.join(repo, 'docs/demo/DMS_DEMO_ACCESS.md'), 'utf8')
+const access = fs.readFileSync(process.env.DEMO_ACCESS_FILE ?? path.join(repo, 'docs/demo/DMS_DEMO_ACCESS.md'), 'utf8')
 const password = access.match(/Temporary password for every account below: `([^`]+)`/)?.[1]
 if (!password) throw new Error('Demo password not found')
 const emails = [...access.matchAll(/`([a-z.]+@demo\.dms\.test)`/g)].map((m) => m[1])
@@ -23,11 +23,12 @@ const browser = await chromium.launch({ headless: true }).catch(() => chromium.l
 for (const email of emails) {
   const page = await (await browser.newContext({ viewport: { width: 1400, height: 800 } })).newPage()
   try {
-    await page.goto('http://localhost:5173/')
+    await page.goto((process.env.DMS_WEB_URL ?? 'http://localhost:5173') + '/')
     await page.getByLabel('Email').fill(email)
     await page.getByLabel('Password').fill(password)
     await page.getByRole('button', { name: 'Sign in' }).click()
-    await page.getByRole('heading', { name: 'Documents', exact: true }).waitFor({ timeout: 15000 })
+    await page.getByRole('heading', { name: /^(Dashboard|Documents)$/ }).waitFor({ timeout: 15000 })
+    if (await page.getByRole('heading', { name: 'Dashboard', exact: true }).count()) { await page.getByRole('link', { name: 'Documents' }).first().click(); await page.getByRole('heading', { name: 'Documents', exact: true }).waitFor() }
     await page.getByText(email).waitFor()
     await page.getByRole('table').waitFor()
     await page.getByRole('button', { name: 'Sign out' }).click()

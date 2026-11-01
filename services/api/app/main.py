@@ -7,6 +7,7 @@ from app.api import (
     audit,
     auth,
     dev_storage,
+    dashboard,
     directory,
     documents,
     lifecycle,
@@ -43,6 +44,7 @@ app.include_router(directory.router)
 app.include_router(ui_templates.router)
 app.include_router(platform_ui.router)
 app.include_router(search.router)
+app.include_router(dashboard.router)
 if dev_storage_enabled(get_settings()):
     app.include_router(dev_storage.router)
 

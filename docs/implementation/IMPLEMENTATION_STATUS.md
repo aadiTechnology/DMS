@@ -412,3 +412,12 @@ Live test `tests/test_storage_b2_live.py` run by the owner against a dedicated p
 **Not verified:** real Google and Microsoft sign-in (no client ids exist yet; the provider pages were stubbed, so the redirect contract is checked but not a real round trip); real email delivery (development log only).
 
 **Not done on the web:** editing tags on a document, an administrator's list of all pending reviews.
+
+## Sprint 19: Dashboard (done)
+**Changed:** `GET /dashboard` (`app/services/dashboard.py`, `app/api/dashboard.py`) and a **Dashboard** page that is now the first page after sign-in and first in the menu. Figures: documents you can see, reviews waiting for you, documents shared with you, storage of the current versions you can see; cards: documents added per day for 30 days, documents by classification, recent documents, your review queue, due soon (retention or review within 30 days), recent activity (administrators only). The design chosen by the person decides which cards appear, their order and width, and the layout preset; the data is identical for every design.
+
+**Decision (simple terms):** the dashboard counts exactly what the library would show the same person, so it can never reveal a hidden document, and an administrator's number is not a back door (an administrator's own privileged read path is unchanged). The activity feed needs the audit permission. No report export was added (owner decision to avoid more features). Charts are drawn with plain page elements, so there is no new library.
+
+**Tests executed (observed):** `tests/test_dashboard.py` 6 passed (counts follow access: owner 3 documents, a stranger 1 with no hint of the others; 30-day chart; activity only with the audit permission; review queue; sign-in and permission required; another organization sees nothing). Browser check `videos/check-dashboard.mjs`: all checks passed (landing page, menu, figures, cards, figures equal the library total and the review queue, links, employee view, designs choose the layout, dark design). The sign-in helpers of the earlier check and recorder scripts were changed to cope with the new landing page; the earlier check scripts were re-run, all eight earlier check scripts were re-run and pass.
+
+**Not done:** report pages and CSV/XLSX export, per-department dashboards, drill-down charts.

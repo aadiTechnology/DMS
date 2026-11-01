@@ -42,7 +42,8 @@ async function open(email) {
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.getByRole('heading', { name: 'Documents', exact: true }).waitFor()
+  await page.getByRole('heading', { name: /^(Dashboard|Documents)$/ }).waitFor()
+  if (await page.getByRole('heading', { name: 'Dashboard', exact: true }).count()) { await page.getByRole('link', { name: 'Documents' }).first().click(); await page.getByRole('heading', { name: 'Documents', exact: true }).waitFor() }
   return { context, page }
 }
 const design = (page) => page.locator('[data-dms-template]').first().getAttribute('data-dms-template')

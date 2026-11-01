@@ -30,7 +30,8 @@ async function signIn(page, email) {
   await field.fill(password)
   if ((await field.getAttribute('type')) !== 'password') throw new Error('The password field is not masked')
   await click(page.getByRole('button', { name: 'Sign in' }))
-  await page.getByRole('heading', { name: 'Documents', exact: true }).waitFor()
+  await page.getByRole('heading', { name: /^(Dashboard|Documents)$/ }).waitFor()
+  if (await page.getByRole('heading', { name: 'Dashboard', exact: true }).count()) { await page.getByRole('link', { name: 'Documents' }).first().click(); await page.getByRole('heading', { name: 'Documents', exact: true }).waitFor() }
 }
 
 async function signOut(page) {

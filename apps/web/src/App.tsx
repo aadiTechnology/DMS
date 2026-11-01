@@ -13,6 +13,7 @@ import DesignCatalogue from "./pages/DesignCatalogue";
 import Approvals from "./pages/Approvals";
 import Categories from "./pages/Categories";
 import DocumentDetail from "./pages/DocumentDetail";
+import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
 import Login from "./pages/Login";
 import { AcceptInvite, Register, ResetPassword, SsoCallback } from "./pages/PublicPages";
@@ -67,7 +68,8 @@ function Authenticated() {
         <PermissionContext.Provider value={new Set(permissions.data?.permissions ?? [])}>
           <Layout>
             <Routes>
-              <Route path="/" element={<Navigate to="/documents" replace />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/documents/:id" element={<DocumentDetail />} />
               <Route path="/upload" element={<Upload />} />
@@ -81,7 +83,7 @@ function Authenticated() {
               <Route path="/appearance" element={<Appearance />} />
               <Route path="/platform/designs" element={<DesignCatalogue />} />
               <Route path="/account" element={<Account />} />
-              <Route path="*" element={<Navigate to="/documents" replace />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Layout>
         </PermissionContext.Provider>

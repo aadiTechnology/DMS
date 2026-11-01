@@ -84,6 +84,16 @@ Scene text lives in the `scenes` array of the script; edit it and re-run (speech
 
 **Limits:** I looked at 3 of the 12 verification frames. The recovery codes visible in one scene belong to the throwaway database. Subtitles are one caption per scene.
 
+## Video 06: the dashboard (Sprint 19)
+
+`videos/06-dms-dashboard.mp4` (about 2.9 minutes, 9 scenes) with `.srt`, `.vtt` and `.csv`, recorded by `videos/record-dashboard.mjs`. Recorded on a separate recording database (deleted afterwards). It shows the administrator's dashboard, the figure-to-library link, an employee's smaller numbers (7 of the 8 demo documents; the highly confidential salary letters are not his), and the Enterprise Productivity, Minimalist Productivity and Premium Dark designs, each chosen through the Appearance page.
+
+**Regenerate:** fresh `demo` database, migrations, `scripts/seed_demo.py`, API and `npx vite --port <port>` against it, then `DMS_WEB_URL=http://localhost:<port> DEMO_ACCESS_FILE=<file> node videos/record-dashboard.mjs`.
+
+**Limits:** I looked at 2 of the 9 verification frames. The upload chart shows one tall bar because every demo document was created in the same minute. Reports and exports are not shown because they were not built.
+
+**Note on earlier scripts:** sign-in now lands on the dashboard, so the sign-in step of the earlier check and recorder scripts was changed to click through to Documents; all eight check scripts were re-run and pass. The earlier recorders were edited the same way but not re-recorded.
+
 ## Video catalogue
 
 Every sprint's video is listed, with a summary, in `DMS_VIDEO_CATALOGUE.csv` (master) and `DMS_VIDEO_CATALOGUE.xlsx` (built from it by `make_video_catalogue_xlsx.py`).

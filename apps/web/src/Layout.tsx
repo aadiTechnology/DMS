@@ -2,6 +2,7 @@ import { LayoutRenderer, type NavItem } from "@aaditech/ui-engine";
 import AccountCircle from "@mui/icons-material/AccountCircle";
 import ApartmentIcon from "@mui/icons-material/Apartment";
 import ArticleIcon from "@mui/icons-material/Article";
+import DashboardIcon from "@mui/icons-material/Dashboard";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 import BrushIcon from "@mui/icons-material/Brush";
 import FolderIcon from "@mui/icons-material/Folder";
@@ -21,6 +22,7 @@ import { useCan } from "./App";
 import { useCategories } from "./queries";
 
 const TITLES: [string, string][] = [
+  ["/dashboard", "Dashboard"],
   ["/upload", "Upload"],
   ["/approvals", "Approvals"],
   ["/shared", "Shared"],
@@ -71,6 +73,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const queue = useQuery({ queryKey: ["approvals", "queue"], queryFn: () => api<unknown[]>("/approvals/queue") });
   const waiting = queue.data?.length ? ` (${queue.data.length})` : "";
   const items: (NavItem & { show: boolean })[] = [
+    { to: "/dashboard", label: "Dashboard", icon: <DashboardIcon />, show: true },
     { to: "/documents", label: "Documents", icon: <ArticleIcon />, show: true },
     { to: "/upload", label: "Upload", icon: <UploadFileIcon />, show: canUpload },
     { to: "/approvals", label: `Approvals${waiting}`, icon: <FactCheckIcon />, show: true },

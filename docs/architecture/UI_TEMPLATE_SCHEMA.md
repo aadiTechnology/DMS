@@ -73,7 +73,7 @@ A new version of an existing key is stored in `ui_template_versions`; the live v
 | `LayoutRenderer` | The application shell: four navigation layouts (full sidebar, floating sidebar, icon rail with a side panel, top bar) and four headers (search, minimal, pill, toolbar) |
 | `resolveDashboard()` | Visible widgets in order with sizes clamped to the grid |
 
-**In the web app** the shell, theme, document list (table, list or grid presets) and document detail (two-column, stacked or tabbed presets) now follow the person's design. `tree-table` in a template is shown as the table preset (the category panel of the rail layout provides the tree). **The dashboard and reports page presets and widgets are resolved but not drawn yet, because those screens do not exist in the application.** Changing design never changes what is loaded or what the person may do.
+**In the web app** the shell, theme, document list (table, list or grid presets) and document detail (two-column, stacked or tabbed presets) now follow the person's design. `tree-table` in a template is shown as the table preset (the category panel of the rail layout provides the tree). **The dashboard is now drawn (Sprint 19): the 11 widget ids each have a card, the grid columns, widget widths and order come from the design, and the four layouts (`stats-and-panels` and `dense-grid` use the grid, `dark-hero` adds a banner to the welcome widget, `focus-list` is one column). The reports page preset is resolved but not drawn, because there is no reports screen.** Changing design never changes what is loaded or what the person may do.
 
 ## Choosing and managing designs in the web app (Sprint T5)
 

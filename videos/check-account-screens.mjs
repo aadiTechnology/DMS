@@ -48,7 +48,7 @@ async function signIn(page, email, pw, code) {
     await page.getByRole('button', { name: 'Sign in' }).click()
   }
 }
-const signedIn = (page) => page.getByRole('heading', { name: 'Documents', exact: true }).waitFor({ timeout: 8000 }).then(() => true).catch(() => false)
+const signedIn = (page) => page.getByRole('heading', { name: /^(Dashboard|Documents)$/ }).waitFor({ timeout: 8000 }).then(() => true).catch(() => false)
 
 /** The newest emailed link (path and token) sent to this address, read from the API's development log. */
 async function emailedLink(to, kind) {
