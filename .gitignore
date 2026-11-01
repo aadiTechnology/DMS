@@ -35,3 +35,4 @@ videos/verification/
 
 videos/.record.log
 videos/.record*.log
+!.env.coolify.example
