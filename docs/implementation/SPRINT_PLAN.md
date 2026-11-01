@@ -1,6 +1,6 @@
 # DMS sprint plan: what exists and what remains
 
-Status on 2026-10-31. Backend: Sprints 0-17 done and tested (346 passed). Web: Sprint W1 done (browse path). Legend: Done = built and tested; Partial = some actions only; None = not built.
+Status on 2026-11-01. **Scope decision by the owner: no further features except dashboards and Coolify deployment readiness. Sprints 18 (notifications), 20 (storage metering), 21 (localization) and the mobile app are set aside, not cancelled. Two small web gaps (tag editing on a document, administrator's list of pending reviews) are accepted as not built.** Web sprints W1 to W2c are approved. Backend: Sprints 0-17 done and tested (346 passed). Web: W1, W2a, W2b, W2c done. Legend: Done = built and tested; Partial = some actions only; None = not built.
 
 ## 1. Feature status by area
 
@@ -63,3 +63,11 @@ Each sprint ends with a narrated walkthrough video and waits for your approval b
 | Hosting region and domain | Deployment |
 | ClamAV container on the server | Deployment |
 | Azure Speech key (optional) | Higher-quality narration for videos |
+
+## 4. Revised remaining plan (owner decision, 2026-11-01)
+
+| Step | Scope | Video |
+|---|---|---|
+| Dashboards (was Sprint 19) | Organization and personal dashboards; report export only if the owner asks | 06 |
+| Coolify readiness | Web app container and hosting files, one stack for API, web and database, environment checklist, deployment guide, a rehearsal on a Linux-like local stack | 07 |
+| Hardening and release docs | Security and recovery checks needed to deploy safely, user guides, release checklist | 08 |
